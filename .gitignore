@@ -1,0 +1,9 @@
+# Игнорируем конфиденциальные файлы и системны файлы
+.env
+.DS_Store
+__pycache__/
+*.pyc
+node_modules/
+uploads/
+static/
+estate_backend.zip
