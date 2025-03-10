@@ -4,16 +4,15 @@ from sqlalchemy.orm import Session
 from app import schemas, models, crud, auth
 from app.database import SessionLocal, engine
 from passlib.context import CryptContext
-from fastapi import APIRouter, Depends, Header
-from app import auth
 from typing import List
 
 router = APIRouter()
 
-router = APIRouter()
+# Инициализируем базу данных
 models.Base.metadata.create_all(bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Функция для получения сессии БД
 def get_db():
     db = SessionLocal()
     try:
@@ -21,14 +20,19 @@ def get_db():
     finally:
         db.close()
 
+# 🔹 Регистрация пользователя с выбором роли
 @router.post("/register", response_model=schemas.UserOut)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
-    hashed_password = pwd_context.hash(user.password)
-    return crud.create_user(db=db, user=user, hashed_password=hashed_password)
 
+    hashed_password = pwd_context.hash(user.password)
+    created_user = crud.create_user(db=db, user=user, hashed_password=hashed_password)
+
+    return schemas.UserOut.model_validate(created_user)
+
+# 🔹 Логин и получение токена
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=form_data.username)
@@ -37,13 +41,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
-
-
-@router.get("/me")
-def read_current_user(current_user: str = Depends(auth.get_current_user)):
-    return {"email": current_user}
-
-# Пример: получение данных текущего пользователя (личный кабинет)
+# 🔹 Получение данных текущего пользователя
 @router.get("/me", response_model=schemas.UserOut)
 def read_current_user(
     current_user: str = Depends(auth.get_current_user),
@@ -52,8 +50,9 @@ def read_current_user(
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return user
+    return schemas.UserOut.model_validate(user)  # ✅
 
+# 🔹 Получение объявлений текущего пользователя
 @router.get("/me/properties", response_model=List[schemas.PropertyOut])
 def read_my_properties(
     current_user: str = Depends(auth.get_current_user),
@@ -62,9 +61,10 @@ def read_my_properties(
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return user.properties
+    return [schemas.PropertyOut.model_validate(prop) for prop in user.properties]  # ✅
 
-@router.post("/", response_model=schemas.FavoriteOut, summary="Add property to favorites")
+# 🔹 Добавление объявления в избранное
+@router.post("/favorites", response_model=schemas.FavoriteOut, summary="Add property to favorites")
 def add_favorite(
     favorite: schemas.FavoriteCreate,
     db: Session = Depends(get_db),
@@ -73,26 +73,39 @@ def add_favorite(
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    fav = crud.add_to_favorites(db, user_id=user.id, property_id=favorite.property_id)
-    if not fav:
-        raise HTTPException(status_code=400, detail="Error adding to favorites")
-    return fav
 
-@router.delete("/", response_model=schemas.FavoriteOut, summary="Remove property from favorites")
+    # ✅ Проверяем, существует ли объявление
+    property_exists = crud.get_property(db, property_id=favorite.property_id)
+    if not property_exists:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    existing_favorite = crud.get_favorite_by_user_and_property(db, user_id=user.id, property_id=favorite.property_id)
+    if existing_favorite:
+        return schemas.FavoriteOut.model_validate(existing_favorite)  # ✅
+
+    fav = crud.add_to_favorites(db, user_id=user.id, property_id=favorite.property_id)
+    return schemas.FavoriteOut.model_validate(fav)  # ✅
+
+# 🔹 Удаление объявления из избранного
+@router.delete("/favorites/{property_id}", response_model=schemas.FavoriteOut, summary="Remove property from favorites")
 def remove_favorite(
-    favorite: schemas.FavoriteCreate,
+    property_id: int,
     db: Session = Depends(get_db),
     current_user: str = Depends(auth.get_current_user)
 ):
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    fav = crud.remove_from_favorites(db, user_id=user.id, property_id=favorite.property_id)
+
+    fav = crud.get_favorite_by_user_and_property(db, user_id=user.id, property_id=property_id)
     if not fav:
         raise HTTPException(status_code=404, detail="Favorite not found")
-    return fav
 
-@router.get("/", response_model=List[schemas.FavoriteOut], summary="List favorites")
+    removed_favorite = crud.remove_from_favorites(db, user_id=user.id, property_id=property_id)
+    return schemas.FavoriteOut.model_validate(removed_favorite)  # ✅
+
+# 🔹 Получение списка избранных объявлений
+@router.get("/favorites", response_model=List[schemas.FavoriteOut])
 def list_favorites(
     db: Session = Depends(get_db),
     current_user: str = Depends(auth.get_current_user)
@@ -100,4 +113,6 @@ def list_favorites(
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return crud.get_favorites(db, user_id=user.id)
+    
+    favorites = crud.get_favorites(db, user_id=user.id)
+    return [schemas.FavoriteOut.model_validate(fav) for fav in favorites]  # ✅

@@ -25,19 +25,18 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    print(f"Полученный токен: {token}")  # 🛠 DEBUG
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing subject",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise credentials_exception
+        print(f"Извлеченный email: {email}")  # 🛠 DEBUG
         return email
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise credentials_exception

@@ -21,7 +21,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://amin:amin123@db:5432/estate_db
+      DATABASE_URL: postgresql://aminjon:aminjon1@db:5432/estate_bd
     ports:
       - "8000:8000"
     volumes:
