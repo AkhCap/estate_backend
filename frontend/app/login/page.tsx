@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "../../lib/axios";
 
-export default function Login() {
+export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
@@ -15,7 +15,6 @@ export default function Login() {
     e.preventDefault();
     console.log("Отправляемые данные:", formData);
 
-    // Создаем URLSearchParams для отправки form data
     const payload = new URLSearchParams();
     payload.append("grant_type", "password");
     payload.append("username", formData.username);
@@ -25,15 +24,19 @@ export default function Login() {
     payload.append("client_secret", "");
 
     try {
-      const res = await axios.post("/users/login", payload, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      const res = await axios.post("/users/login", payload.toString(), {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       });
-      const token = res.data.access_token; // Извлекаем access_token
-      localStorage.setItem("token", token);
+      localStorage.setItem("token", res.data.access_token);
       router.push("/profile");
     } catch (err: any) {
-      console.error("Ошибка входа:", err.response?.data);
-      setError("Ошибка входа");
+      console.error("Полный объект ошибки:", err);
+      const errorMessage =
+        err.response?.data || err.message || "Неизвестная ошибка";
+      console.error("Ошибка входа:", errorMessage);
+      setError("Ошибка входа: " + errorMessage);
     }
   };
 

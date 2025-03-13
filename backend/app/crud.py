@@ -15,13 +15,18 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
 def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> models.User:
     db_user = models.User(
         email=user.email,
+        username=user.username,
         hashed_password=hashed_password,
-        role=user.role  # ✅ Теперь при регистрации можно задать роль (PRIVATE, AGENT, DEVELOPER)
+        role=user.role,  # Используем значение из UserCreate
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=user.phone
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 # Обновление профиля пользователя с дополнительными полями
 def update_user(db: Session, user_id: int, updated_data: schemas.UserUpdate) -> Optional[models.User]:
@@ -56,10 +61,13 @@ def update_user(db: Session, user_id: int, updated_data: schemas.UserUpdate) -> 
 
 # Создание объявления
 def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int):
+    # Здесь предполагается, что property.dict() уже содержит ключ image_url,
+    # который вы формируете на стороне фронтенда или через отдельный endpoint.
     db_property = models.Property(
-        **property.dict(exclude={"deal_type"}),  # ❗ Исключаем deal_type из словаря
+        **property.dict(exclude={"deal_type", "image_url"}),
         owner_id=owner_id,
-        deal_type=property.deal_type.value  # ✅ Преобразуем ENUM в строку перед вставкой
+        deal_type=property.deal_type.value,
+        image_url=property.image_url or ""  # Если image_url пустой, можно оставить пустую строку
     )
     db.add(db_property)
     db.commit()
@@ -152,24 +160,30 @@ def delete_property(db: Session, property_id: int) -> Optional[models.Property]:
     return db_property
 
 
+def add_property_image(db: Session, property_id: int, image_url: str) -> models.PropertyImage:
+    image = models.PropertyImage(property_id=property_id, image_url=image_url)
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return image
+
+def get_property_images(db: Session, property_id: int) -> List[models.PropertyImage]:
+    return db.query(models.PropertyImage).filter(models.PropertyImage.property_id == property_id).all()
+
 # Получение избранного по пользователю и объявлению
-def get_favorite_by_user_and_property(db: Session, user_id: int, property_id: int) -> Optional[models.Favorite]:
+def get_favorite_by_user_and_property(db: Session, user_id: int, property_id: int):
     return db.query(models.Favorite).filter(
         models.Favorite.user_id == user_id,
         models.Favorite.property_id == property_id
     ).first()
 
 
-# Добавление в избранное
+
 def add_to_favorites(db: Session, user_id: int, property_id: Optional[int]) -> Optional[models.Favorite]:
     if property_id is None:
         raise ValueError("❌ Ошибка: property_id не может быть None!")
-
-    existing_favorite = db.query(models.Favorite).filter(
-        models.Favorite.user_id == user_id,
-        models.Favorite.property_id == property_id
-    ).first()
-
+    
+    existing_favorite = get_favorite_by_user_and_property(db, user_id, property_id)
     if existing_favorite:
         return existing_favorite
 
@@ -178,6 +192,20 @@ def add_to_favorites(db: Session, user_id: int, property_id: Optional[int]) -> O
     db.commit()
     db.refresh(fav)
     return fav
+
+def get_favorites(db: Session, user_id: int) -> List[models.Favorite]:
+    return db.query(models.Favorite).filter(models.Favorite.user_id == user_id).all()
+
+def remove_from_favorites(db: Session, user_id: int, property_id: int) -> Optional[models.Favorite]:
+    favorite = get_favorite_by_user_and_property(db, user_id, property_id)
+    if favorite:
+        db.delete(favorite)
+        db.commit()
+    return favorite
+
+# Получение избранных объявлений пользователя
+def get_favorites(db: Session, user_id: int) -> List[models.Favorite]:
+    return db.query(models.Favorite).filter(models.Favorite.user_id == user_id).all()
 
 
 # Удаление из избранного
@@ -194,18 +222,13 @@ def remove_from_favorites(db: Session, user_id: int, property_id: int) -> Option
     return fav
 
 
-# Получение избранных объявлений пользователя
-def get_favorites(db: Session, user_id: int) -> List[models.Favorite]:
-    return db.query(models.Favorite).filter(models.Favorite.user_id == user_id).all()
-
-
 # Добавление отзыва
 def create_review(db: Session, review: schemas.ReviewCreate, user_id: int) -> models.Review:
     db_review = models.Review(
         user_id=user_id,
         property_id=review.property_id,
         rating=review.rating,
-        comment=review.comment
+        comment=review.comment,
     )
     db.add(db_review)
     db.commit()
@@ -214,7 +237,7 @@ def create_review(db: Session, review: schemas.ReviewCreate, user_id: int) -> mo
 
 
 # Получение отзывов по объявлению
-def get_reviews_by_property(db: Session, property_id: int) -> List[models.Review]:
+def get_reviews_by_property(db: Session, property_id: int):
     return db.query(models.Review).filter(models.Review.property_id == property_id).all()
 
 
@@ -238,9 +261,24 @@ def update_review(db: Session, review_id: int, review_update: schemas.ReviewBase
 
 
 # Удаление отзыва
-def delete_review(db: Session, review_id: int) -> Optional[models.Review]:
-    db_review = db.query(models.Review).filter(models.Review.id == review_id).first()
-    if db_review:
-        db.delete(db_review)
+def delete_review(db: Session, review_id: int):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if review:
+        db.delete(review)
         db.commit()
-    return db_review
+    return review
+
+#История
+
+def create_history(db: Session, history: schemas.HistoryCreate, user_id: int):
+    db_history = models.History(
+        user_id=user_id,
+        property_id=history.property_id
+    )
+    db.add(db_history)
+    db.commit()
+    db.refresh(db_history)
+    return db_history
+
+def get_history_by_user(db: Session, user_id: int):
+    return db.query(models.History).filter(models.History.user_id == user_id).all()

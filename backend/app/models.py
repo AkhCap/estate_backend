@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, func
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -19,23 +19,24 @@ class DealTypeEnum(str, enum.Enum):
     
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
+    role = Column(String, nullable=False)  # Это поле будет хранить значения "private", "agent", "developer"
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     phone = Column(String, nullable=True)
-    avatar_url = Column(String, nullable=True)  # Ссылка на аватар
+    avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
-    role = Column(String, default="private")
     
 
-    properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")  # ✅ Удаление объявлений при удалении пользователя
-    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")  # ✅ Удаление избранного при удалении пользователя
-    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")  # ✅ Удаление отзывов при удалении пользователя
+    properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")  
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan") 
+    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
+    history = relationship("History", back_populates="user", cascade="all, delete-orphan")
 
+  
 
 class Property(Base):
     __tablename__ = "properties"
@@ -53,40 +54,63 @@ class Property(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     image_url = Column(String)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # ✅ Каскадное удаление объявлений пользователя
-
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
     # ENUM теперь соответствует Pydantic
     deal_type = Column(Enum(DealTypeEnum, name="deal_type_enum", create_type=False), nullable=False)
 
     # Связи
     owner = relationship("User", back_populates="properties")
-    favorited_by = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")  # ✅ Удаление из избранного при удалении объявления
-    reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")  # ✅ Удаление отзывов при удалении объявления
+    favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")  
+    reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
+    history = relationship("History", back_populates="property", cascade="all, delete-orphan")
+    images = relationship("PropertyImage", back_populates="property", cascade="all, delete-orphan")  
+ 
 
+class PropertyImage(Base):
+    __tablename__ = "property_images"
+    id = Column(Integer, primary_key=True, index=True)  # ← Добавьте этот столбец!
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    image_url = Column(String, nullable=False)
+    uploaded_at = Column(DateTime, server_default=func.now())
 
+    # Устанавливаем связь с недвижимостью
+    property = relationship("Property", back_populates="images")
+
+    
 class Favorite(Base):
     __tablename__ = "favorites"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)  # ✅ Добавлено CASCADE
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    # Связи
+    # Обратные связи:
     user = relationship("User", back_populates="favorites")
-    property = relationship("Property", back_populates="favorited_by")
+    property = relationship("Property", back_populates="favorites")
 
 
 class Review(Base):
     __tablename__ = "reviews"
-
+    
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # ✅ Добавлено CASCADE
-    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)  # ✅ Добавлено CASCADE
-    rating = Column(Float, nullable=False)  # Оценка, например, от 1 до 5
-    comment = Column(String, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
 
-    # Связи
     user = relationship("User", back_populates="reviews")
     property = relationship("Property", back_populates="reviews")
+
+
+class History(Base):
+    __tablename__ = "history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    viewed_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="history")
+    property = relationship("Property", back_populates="history")

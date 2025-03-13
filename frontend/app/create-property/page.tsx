@@ -1,123 +1,190 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "../../lib/axios"; // Проверьте, что путь корректен
+import axios from "../../lib/axios";
 
-export default function CreateProperty() {
+interface CreatePropertyForm {
+  title: string;
+  description: string;
+  price: number;
+  address: string;
+  rooms: number;
+  area: number;
+  property_type: string;
+  deal_type: string;
+}
+
+export default function CreatePropertyPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreatePropertyForm>({
     title: "",
     description: "",
-    price: "",
-    rooms: "",
-    area: "",
+    price: 0,
     address: "",
-    property_type: "",
-    deal_type: "", // возможно, используйте select, если это ENUM
-    // добавьте другие поля, если нужны
+    rooms: 1,
+    area: 30,
+    property_type: "квартира",
+    deal_type: "sale",
   });
+
+  const [files, setFiles] = useState<FileList | null>(null);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Пожалуйста, войдите в систему");
-      return;
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(e.target.files);
+    }
+  };
+
+  const handleCreateProperty = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      // Преобразуйте числовые поля, если нужно
-      const payload = {
-        ...formData,
-        price: Number(formData.price),
-        rooms: Number(formData.rooms),
-        area: Number(formData.area),
-      };
-      const res = await axios.post("/properties/", payload, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // После успешного создания перенаправляем пользователя
-      router.push("/profile"); 
+      // 1. Создаём объявление
+      const createRes = await axios.post("/properties/", formData);
+      const createdProperty = createRes.data;
+      console.log("Создано объявление:", createdProperty);
+
+      const propertyId = createdProperty.id;
+
+      // 2. Если есть файлы — загружаем их
+      if (files && files.length > 0) {
+        const formDataFiles = new FormData();
+        // Добавляем все файлы в FormData
+        Array.from(files).forEach((file) => {
+          formDataFiles.append("files", file);
+        });
+
+        // Вызываем эндпоинт /properties/{property_id}/upload-images
+        await axios.post(`/properties/${propertyId}/upload-images`, formDataFiles, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      // После успеха — переходим, например, на список объявлений
+      router.push("/properties");
     } catch (err: any) {
-      console.error("Ошибка создания объявления:", err.response?.data);
-      setError("Ошибка создания объявления");
+      console.error("Ошибка при создании объявления:", err);
+      setError("Не удалось создать объявление");
     }
   };
 
   return (
-    <main style={{ padding: "20px" }}>
-      <h1>Создать новое объявление</h1>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
+    <div className="max-w-xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Создать новое объявление</h1>
+      {error && <p className="text-red-500 mb-2">{error}</p>}
+
+      <form onSubmit={handleCreateProperty} className="space-y-4">
         <div>
-          <label>Заголовок:</label>
+          <label className="block font-medium">Заголовок:</label>
           <input
             type="text"
+            name="title"
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Описание:</label>
+          <label className="block font-medium">Описание:</label>
           <textarea
+            name="description"
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Цена:</label>
+          <label className="block font-medium">Цена:</label>
           <input
             type="number"
+            name="price"
             value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Комнат:</label>
+          <label className="block font-medium">Комнат:</label>
           <input
             type="number"
+            name="rooms"
             value={formData.rooms}
-            onChange={(e) => setFormData({ ...formData, rooms: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Площадь:</label>
+          <label className="block font-medium">Площадь (м²):</label>
           <input
             type="number"
+            name="area"
             value={formData.area}
-            onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Адрес:</label>
+          <label className="block font-medium">Адрес:</label>
           <input
             type="text"
+            name="address"
             value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            onChange={handleInputChange}
+            className="border p-2 w-full"
           />
         </div>
         <div>
-          <label>Тип недвижимости:</label>
-          <input
-            type="text"
+          <label className="block font-medium">Тип недвижимости:</label>
+          <select
+            name="property_type"
             value={formData.property_type}
-            onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
-          />
+            onChange={handleInputChange}
+            className="border p-2 w-full"
+          >
+            <option value="квартира">Квартира</option>
+            <option value="дом">Дом</option>
+            <option value="комната">Комната</option>
+          </select>
         </div>
         <div>
-          <label>Тип сделки:</label>
-          <input
-            type="text"
+          <label className="block font-medium">Тип сделки:</label>
+          <select
+            name="deal_type"
             value={formData.deal_type}
-            onChange={(e) => setFormData({ ...formData, deal_type: e.target.value })}
-          />
+            onChange={handleInputChange}
+            className="border p-2 w-full"
+          >
+            <option value="sale">Продажа</option>
+            <option value="rent">Аренда</option>
+          </select>
         </div>
-        <button type="submit">Создать объявление</button>
+
+        {/* Блок для загрузки фотографий */}
+        <div>
+          <label className="block font-medium">Фотографии:</label>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileChange}
+            className="border p-2 w-full"
+          />
+          <p className="text-sm text-gray-500">Можно выбрать несколько файлов</p>
+        </div>
+
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+        >
+          Создать объявление
+        </button>
       </form>
-    </main>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "../../lib/axios";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface User {
   username: string;
@@ -17,8 +18,8 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Обновляем состояние формы с новыми полями, инициализируя пустыми строками
+
+  // Форма для редактирования профиля
   const [formData, setFormData] = useState<User>({
     username: "",
     email: "",
@@ -27,35 +28,37 @@ export default function Profile() {
     phone: "",
     avatar_url: "",
   });
-  
+
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  useEffect(() => {
-    if (!token) {
-      setError("Пожалуйста, войдите в систему");
-      router.push("/login");
-      return;
-    }
-    axios
-      .get("/users/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        setUser(res.data);
-        setFormData({
-          username: res.data.username || "",
-          email: res.data.email || "",
-          first_name: res.data.first_name || "",
-          last_name: res.data.last_name || "",
-          phone: res.data.phone || "",
-          avatar_url: res.data.avatar_url || "",
-        });
-      })
-      .catch((err) => {
-        console.error("Ошибка получения профиля:", err);
-        setError("Ошибка получения данных профиля");
+useEffect(() => {
+  if (!token) {
+    setError("Пожалуйста, войдите в систему");
+    router.push("/login");
+    return;
+  }
+  console.log("Токен из localStorage:", token);
+  axios
+    .get("/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => {
+      console.log("Данные профиля:", res.data);
+      setUser(res.data);
+      setFormData({
+        username: res.data.username || "",
+        email: res.data.email || "",
+        first_name: res.data.first_name || "",
+        last_name: res.data.last_name || "",
+        phone: res.data.phone || "",
+        avatar_url: res.data.avatar_url || "",
       });
-  }, [token, router]);
+    })
+    .catch((err) => {
+      console.error("Ошибка получения профиля:", err);
+      setError("Ошибка получения данных профиля");
+    });
+}, [token, router]);
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
@@ -101,126 +104,126 @@ export default function Profile() {
     }
   };
 
-  if (error) return <p style={{ textAlign: "center" }}>{error}</p>;
-  if (!user) return <p style={{ textAlign: "center" }}>Загрузка...</p>;
-
   return (
-    <div style={{ maxWidth: 800, margin: "50px auto", padding: "0 20px" }}>
-      <h1>Профиль пользователя</h1>
-      {user.avatar_url && (
-        <div style={{ marginBottom: "20px" }}>
-          <img src={user.avatar_url} alt="Аватар" style={{ width: "150px", borderRadius: "50%" }} />
-        </div>
-      )}
-      <div style={{ marginBottom: "20px" }}>
-        <label>Загрузить аватар:</label>
-        <input type="file" accept="image/*" onChange={handleAvatarUpload} />
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">Профиль пользователя</h1>
+      {/* Отображение аватара */}
+      <div className="mb-4">
+        <img
+          src={user?.avatar_url ? user.avatar_url : "/fallback.jpg"}
+          alt="Аватар"
+          style={{ width: "150px", borderRadius: "50%" }}
+        />
+      </div>
+      {/* Загрузка нового аватара */}
+      <div className="mb-4">
+        <label className="block mb-1">Загрузить аватар:</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarUpload}
+          className="border p-1"
+        />
       </div>
       {isEditing ? (
-        <form onSubmit={handleSave}>
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "4px" }}>Имя пользователя:</label>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block mb-1">Имя пользователя:</label>
             <input
               type="text"
-              value={formData.username || ""}
+              value={formData.username}
               onChange={(e) =>
                 setFormData({ ...formData, username: e.target.value })
               }
-              style={{ width: "100%", padding: "8px" }}
+              className="w-full p-2 border rounded"
             />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "4px" }}>Email:</label>
+          <div>
+            <label className="block mb-1">Email:</label>
             <input
               type="email"
-              value={formData.email || ""}
+              value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              style={{ width: "100%", padding: "8px" }}
+              className="w-full p-2 border rounded"
             />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "4px" }}>Имя:</label>
+          <div>
+            <label className="block mb-1">Имя:</label>
             <input
               type="text"
-              value={formData.first_name || ""}
+              value={formData.first_name}
               onChange={(e) =>
                 setFormData({ ...formData, first_name: e.target.value })
               }
-              style={{ width: "100%", padding: "8px" }}
+              className="w-full p-2 border rounded"
             />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "4px" }}>Фамилия:</label>
+          <div>
+            <label className="block mb-1">Фамилия:</label>
             <input
               type="text"
-              value={formData.last_name || ""}
+              value={formData.last_name}
               onChange={(e) =>
                 setFormData({ ...formData, last_name: e.target.value })
               }
-              style={{ width: "100%", padding: "8px" }}
+              className="w-full p-2 border rounded"
             />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "4px" }}>Телефон:</label>
+          <div>
+            <label className="block mb-1">Телефон:</label>
             <input
               type="text"
-              value={formData.phone || ""}
+              value={formData.phone}
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
-              style={{ width: "100%", padding: "8px" }}
+              className="w-full p-2 border rounded"
             />
           </div>
-          <button
-            type="submit"
-            style={{
-              padding: "10px 20px",
-              background: "#00A3E0",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              marginRight: "10px",
-            }}
-          >
-            Сохранить изменения
-          </button>
-          <button
-            type="button"
-            onClick={handleEditToggle}
-            style={{
-              padding: "10px 20px",
-              background: "#ccc",
-              color: "#000",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Отмена
-          </button>
+          <div className="flex space-x-4">
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            >
+              Сохранить изменения
+            </button>
+            <button
+              type="button"
+              onClick={handleEditToggle}
+              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
+            >
+              Отмена
+            </button>
+          </div>
         </form>
       ) : (
-        <div>
-          <p><strong>Имя пользователя:</strong> {user.username}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Имя:</strong> {user.first_name}</p>
-          <p><strong>Фамилия:</strong> {user.last_name}</p>
-          <p><strong>Телефон:</strong> {user.phone}</p>
+        <div className="space-y-2">
+          <p>
+            <strong>Имя пользователя:</strong> {user?.username}
+          </p>
+          <p>
+            <strong>Email:</strong> {user?.email}
+          </p>
+          <p>
+            <strong>Имя:</strong> {user?.first_name}
+          </p>
+          <p>
+            <strong>Фамилия:</strong> {user?.last_name}
+          </p>
+          <p>
+            <strong>Телефон:</strong> {user?.phone}
+          </p>
           <button
             onClick={handleEditToggle}
-            style={{
-              padding: "10px 20px",
-              background: "#00A3E0",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           >
             Редактировать профиль
           </button>
         </div>
       )}
+      {error && <p className="text-center text-red-500 mt-4">{error}</p>}
     </div>
   );
 }

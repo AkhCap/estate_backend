@@ -1,7 +1,8 @@
+# app/main.py
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
-from app.routes import users, properties, favorites, reviews
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes import users, properties, favorites, reviews, history, uploads
 
 app = FastAPI(
     title="Estate - Сервис недвижимости",
@@ -10,13 +11,12 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-origins = [
-    "http://localhost:3000",
-]
+# Настройка CORS – убедитесь, что origin соответствует вашему фронтенду
+origins = ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,  # или ["*"] для разрешения всем, но лучше ограничить
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,7 +27,10 @@ app.include_router(users.router, prefix="/users", tags=["Пользовател�
 app.include_router(properties.router, prefix="/properties", tags=["Объявления"])
 app.include_router(favorites.router, prefix="/favorites", tags=["Избранное"])
 app.include_router(reviews.router, prefix="/reviews", tags=["Отзывы"])
-
+app.include_router(history.router, prefix="/history", tags=["История"])
+app.include_router(uploads.router, prefix="", tags=["Uploads"])
+#app.include_router(uploads.router, prefix="/uploads", tags=["Uploads"])
+# Добавляем корневой маршрут
 @app.get("/")
 def read_root():
     return {"message": "Добро пожаловать в Estate!"}
@@ -38,7 +41,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title=app.title,
-        version=app.version,
+        version="1.0.0",
         description="Custom API schema with security definitions",
         routes=app.routes,
     )
@@ -55,7 +58,7 @@ def custom_openapi():
         }
     }
 
-    # Маршруты, которые должны требовать авторизацию
+    # Применяем авторизацию к защищенным маршрутам
     protected_routes = [
         ("/users/me", ["get"]),
         ("/users/me/properties", ["get"]),
@@ -66,9 +69,9 @@ def custom_openapi():
 
     for path, methods in openapi_schema["paths"].items():
         for method_type, method in methods.items():
-            if any(path.startswith(route) and method_type in methods for route, methods in protected_routes):
-                method["security"] = [{"OAuth2PasswordBearer": []}]
-    
+            for route, route_methods in protected_routes:
+                if path.startswith(route) and method_type in route_methods:
+                    method["security"] = [{"OAuth2PasswordBearer": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

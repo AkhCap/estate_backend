@@ -1,53 +1,45 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, crud, auth
-from app.database import SessionLocal
+from app.database import get_db
 
 router = APIRouter()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@router.post("/", response_model=schemas.FavoriteOut, summary="Add property to favorites")
+# Добавить объявление в избранное
+@router.post("/", response_model=schemas.FavoriteOut, summary="Добавить объект в избранное")
 def add_favorite(
-    favorite: schemas.FavoriteCreate,  # данные, которые отправляет клиент
-    db: Session = Depends(get_db),       # зависимость для получения сессии базы данных
-    current_user: str = Depends(auth.get_current_user)  # зависимость для авторизации
-):
-    # Здесь current_user будет содержать значение, возвращенное функцией auth.get_current_user
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    fav = crud.add_to_favorites(db, user_id=user.id, property_id=favorite.property_id)
-    if not fav:
-        raise HTTPException(status_code=400, detail="Error adding to favorites")
-    return fav
-
-@router.delete("/", response_model=schemas.FavoriteOut, summary="Remove property from favorites")
-def remove_favorite(
     favorite: schemas.FavoriteCreate,
     db: Session = Depends(get_db),
     current_user: str = Depends(auth.get_current_user)
 ):
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    fav = crud.remove_from_favorites(db, user_id=user.id, property_id=favorite.property_id)
-    if not fav:
-        raise HTTPException(status_code=404, detail="Favorite not found")
-    return fav
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return crud.add_to_favorites(db, user_id=user.id, property_id=favorite.property_id)
 
-@router.get("/", response_model=List[schemas.FavoriteOut], summary="List favorites")
+# Получить список избранных объявлений для текущего пользователя
+@router.get("/", response_model=List[schemas.FavoriteOut], summary="Список избранных объектов")
 def list_favorites(
     db: Session = Depends(get_db),
     current_user: str = Depends(auth.get_current_user)
 ):
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
     return crud.get_favorites(db, user_id=user.id)
+
+# Удалить объявление из избранного
+@router.delete("/{property_id}", response_model=schemas.FavoriteOut, summary="Удалить объект из избранного")
+def remove_favorite(
+    property_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    favorite = crud.get_favorite_by_user_and_property(db, user_id=user.id, property_id=property_id)
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Объект не найден в избранном")
+    return crud.remove_from_favorites(db, user_id=user.id, property_id=property_id)

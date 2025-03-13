@@ -132,35 +132,37 @@ def delete_property_endpoint(
 
 
 # Эндпоинт для загрузки изображения
-@router.post("/{property_id}/upload-image", response_model=schemas.PropertyOut)
-async def upload_property_image(
+@router.post("/{property_id}/upload-images", response_model=schemas.PropertyOut)
+async def upload_property_images(
     property_id: int,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: str = Depends(auth.get_current_user)
 ):
     db_property = crud.get_property(db, property_id=property_id)
     if not db_property:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
-
+    
     user = crud.get_user_by_email(db, email=current_user)
     if db_property.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Нет прав для загрузки изображения")
+        raise HTTPException(status_code=403, detail="Нет прав для загрузки изображений")
+    
+    # Папка для изображений объявлений
+    uploads_dir = "uploads/properties"
+    os.makedirs(uploads_dir, exist_ok=True)
 
-    uploads_dir = "uploads"
-    if not os.path.exists(uploads_dir):
-        os.makedirs(uploads_dir)
-
-    file_ext = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(uploads_dir, unique_filename)
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    db_property.image_url = "/" + file_path.replace("\\", "/")
+    for file in files:
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(uploads_dir, unique_filename)
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        # Формируем URL, если вы отдаёте файлы через endpoint /uploads/...
+        image_url = f"/uploads/properties/{unique_filename}"
+        crud.add_property_image(db, property_id, image_url)
+    
     db.commit()
     db.refresh(db_property)
-
+    # При необходимости, можно дополнить PropertyOut, чтобы он возвращал images
     return schemas.PropertyOut.model_validate(db_property)

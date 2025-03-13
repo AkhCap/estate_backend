@@ -1,15 +1,17 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-import enum
+from typing import Optional, List
+from enum import Enum
 
 # 🔹 ENUM для типа сделки (Продажа / Аренда)
-class DealType(str, enum.Enum):
+class DealType(str, Enum):
     SALE = "sale"
     RENT = "rent"
 
+
+
 # 🔹 ENUM для ролей пользователей
-class UserRole(str, enum.Enum):
+class UserRole(str, Enum):
     PRIVATE = "private"  # Частное лицо
     AGENT = "agent"  # Агент
     DEVELOPER = "developer"  # Застройщик
@@ -18,15 +20,17 @@ class UserRole(str, enum.Enum):
 # 🔹 Базовая схема пользователя
 class UserBase(BaseModel):
     email: EmailStr
-    role: UserRole = UserRole.PRIVATE  # Роль по умолчанию – частное лицо
+    username: str
 
 
 # 🔹 Схема регистрации пользователя
 class UserCreate(UserBase):
     password: str
+    role: UserRole = UserRole.PRIVATE  
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    
 
 class UserUpdate(BaseModel):
     username: str
@@ -38,20 +42,16 @@ class UserUpdate(BaseModel):
 
 
 # 🔹 Схема вывода данных о пользователе
-class UserOut(UserBase):
+class UserOut(BaseModel):
     id: int
-    is_active: bool
-    role: UserRole = UserRole.PRIVATE
+    email: EmailStr
+    username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-
-    class Config:
-        from_attributes = True  # Pydantic v2 (замена orm_mode)
+    model_config = {"from_attributes": True}
 
 
 # 🔹 Базовая схема недвижимости
@@ -73,8 +73,15 @@ class PropertyBase(BaseModel):
     class Config:
         from_attributes = True  # Pydantic v2 (замена orm_mode)
 
+class PropertyImageOut(BaseModel):
+    id: int
+    image_url: str
+    uploaded_at: datetime
 
-# 🔹 Схема создания недвижимости
+    class Config:
+        from_attributes = True
+
+
 class PropertyCreate(PropertyBase):
     pass
 
@@ -83,6 +90,7 @@ class PropertyCreate(PropertyBase):
 class PropertyOut(PropertyBase):
     id: int
     owner_id: int
+    images: Optional[List[PropertyImageOut]] = []
 
     class Config:
         from_attributes = True
@@ -128,9 +136,9 @@ class FavoriteOut(BaseModel):
 
 # 🔹 Схемы для отзывов
 class ReviewBase(BaseModel):
-    rating: float
+    rating: int
     comment: Optional[str] = None
-
+    
 
 class ReviewCreate(ReviewBase):
     property_id: int
@@ -140,10 +148,24 @@ class ReviewOut(ReviewBase):
     id: int
     user_id: int
     property_id: int
-    created_at: datetime
+
 
     class Config:
-        from_attributes = True
+        orm_mode = True
+
+
+class HistoryBase(BaseModel):
+    property_id: int
+
+class HistoryCreate(HistoryBase):
+    pass
+
+class HistoryOut(HistoryBase):
+    id: int
+    viewed_at: datetime
+
+    class Config:
+        orm_mode = True
 
 
 # 🔹 Схема входа пользователя

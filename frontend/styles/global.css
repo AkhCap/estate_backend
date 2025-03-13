@@ -1,3 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
 /* Общие стили */
 body {
   background-color: #f7f8fa;

@@ -53,7 +53,7 @@ export default function HomePage() {
   });
 
   return (
-    <main className="main-container">
+    <main className="main-container" style={{ background: "#f6f6f6", minHeight: "100vh", padding: "20px 0" }}>
       {/* Хедер */}
       <header className="header">
         <h1>Estate</h1>
@@ -72,9 +72,7 @@ export default function HomePage() {
 
       {/* Секция поиска */}
       <section className="search-container">
-        <h2 style={{ fontSize: "1.75rem", marginBottom: "10px" }}>
-          Поиск недвижимости
-        </h2>
+        <h2 style={{ fontSize: "1.75rem", marginBottom: "10px" }}>Поиск недвижимости</h2>
         <div style={{ display: "flex" }}>
           <input
             type="text"
@@ -88,14 +86,7 @@ export default function HomePage() {
 
       {/* Секция объявлений */}
       <section>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h2 style={{ fontSize: "1.75rem" }}>Популярные объявления</h2>
           <div>
             <Link href="/create-property">
@@ -108,8 +99,10 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-     </section>
-        {/* Дополнительная секция поиска и фильтров */}
+      </section>
+
+      {/* Дополнительная секция поиска и фильтров */}
+      <section>
         <div className="search-bar" style={{ marginBottom: "20px" }}>
           <input
             type="text"
@@ -199,7 +192,10 @@ export default function HomePage() {
             />
           </div>
         </div>
+      </section>
 
+      {/* Секция карточек объявлений */}
+      <section>
         <div className="cards-grid">
           {filteredListings.length > 0 ? (
             filteredListings.map((listing) => (
@@ -225,15 +221,16 @@ export default function HomePage() {
             <p>🔍 Ничего не найдено</p>
           )}
         </div>
+      </section>
 
-        <section className="view-all" style={{ textAlign: "center", marginTop: "30px" }}>
-          <Link href="/properties">
-            <button className="view-all-button">
-              Смотреть все объявления
-            </button>
-          </Link>
-        </section>
-      
+      {/* Секция "Смотреть все объявления" */}
+      <section className="view-all" style={{ textAlign: "center", marginTop: "30px" }}>
+        <Link href="/properties">
+          <button className="view-all-button">
+            Смотреть все объявления
+          </button>
+        </Link>
+      </section>
     </main>
-   );
+  );
 }
