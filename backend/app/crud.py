@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app import models, schemas
 from typing import Optional, List
 from sqlalchemy.exc import SQLAlchemyError
@@ -76,8 +76,13 @@ def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int
 
 
 # Получение одного объявления по ID
-def get_property(db: Session, property_id: int) -> Optional[models.Property]:
-    return db.query(models.Property).filter(models.Property.id == property_id).first()
+def get_property(db: Session, property_id: int):
+    return (
+        db.query(models.Property)
+        .filter(models.Property.id == property_id)
+        .options(selectinload(models.Property.images))  # Подгружаем связанные изображения
+        .first()
+    )
 
 
 # Получение списка объявлений с фильтрацией
@@ -97,7 +102,7 @@ def get_properties(
     sort_by: Optional[str] = None,
     sort_order: Optional[str] = "asc",
 ) -> List[models.Property]:
-    query = db.query(models.Property)
+    query = db.query(models.Property).options(selectinload(models.Property.images))
 
     if min_price is not None:
         query = query.filter(models.Property.price >= min_price)

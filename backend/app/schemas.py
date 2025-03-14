@@ -76,7 +76,7 @@ class PropertyBase(BaseModel):
 class PropertyImageOut(BaseModel):
     id: int
     image_url: str
-    uploaded_at: datetime
+    #uploaded_at: datetime
 
     class Config:
         from_attributes = True
@@ -87,13 +87,21 @@ class PropertyCreate(PropertyBase):
 
 
 # 🔹 Схема вывода недвижимости
-class PropertyOut(PropertyBase):
+class PropertyOut(BaseModel):
     id: int
+    title: str
+    description: Optional[str]
+    price: float
+    rooms: int
+    area: float
+    address: str
+    property_type: str
+    deal_type: str
     owner_id: int
-    images: Optional[List[PropertyImageOut]] = []
+    # Вместо массива строк делаем массив объектов:
+    images: List[PropertyImageOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # 🔹 Схема обновления недвижимости

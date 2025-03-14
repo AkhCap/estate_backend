@@ -29,41 +29,47 @@ export default function Profile() {
     avatar_url: "",
   });
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  // Получаем токен из localStorage (если он есть)
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-useEffect(() => {
-  if (!token) {
-    setError("Пожалуйста, войдите в систему");
-    router.push("/login");
-    return;
-  }
-  console.log("Токен из localStorage:", token);
-  axios
-    .get("/users/me", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => {
-      console.log("Данные профиля:", res.data);
-      setUser(res.data);
-      setFormData({
-        username: res.data.username || "",
-        email: res.data.email || "",
-        first_name: res.data.first_name || "",
-        last_name: res.data.last_name || "",
-        phone: res.data.phone || "",
-        avatar_url: res.data.avatar_url || "",
+  // При первом рендере проверяем наличие токена и загружаем профиль
+  useEffect(() => {
+    if (!token) {
+      setError("Пожалуйста, войдите в систему");
+      router.push("/login");
+      return;
+    }
+    console.log("Токен из localStorage:", token);
+
+    axios
+      .get("/users/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        console.log("Данные профиля:", res.data);
+        setUser(res.data);
+        setFormData({
+          username: res.data.username || "",
+          email: res.data.email || "",
+          first_name: res.data.first_name || "",
+          last_name: res.data.last_name || "",
+          phone: res.data.phone || "",
+          avatar_url: res.data.avatar_url || "",
+        });
+      })
+      .catch((err) => {
+        console.error("Ошибка получения профиля:", err);
+        setError("Ошибка получения данных профиля");
       });
-    })
-    .catch((err) => {
-      console.error("Ошибка получения профиля:", err);
-      setError("Ошибка получения данных профиля");
-    });
-}, [token, router]);
+  }, [token, router]);
 
+  // Функция переключения режима редактирования
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
   };
 
+  // Функция сохранения изменений профиля
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -104,17 +110,37 @@ useEffect(() => {
     }
   };
 
+  // Функция «Выйти» (Logout)
+  const handleLogout = () => {
+    // Удаляем токен из localStorage
+    localStorage.removeItem("token");
+    // Перенаправляем на страницу логина
+    router.push("/login");
+  };
+
+  // Если есть ошибка, отображаем её
+  if (error) {
+    return <p className="text-center text-red-500">{error}</p>;
+  }
+
+  // Если user ещё не загрузился, показываем «Загрузка...»
+  if (!user) {
+    return <p className="text-center">Загрузка...</p>;
+  }
+
   return (
     <div className="max-w-3xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Профиль пользователя</h1>
+
       {/* Отображение аватара */}
       <div className="mb-4">
         <img
-          src={user?.avatar_url ? user.avatar_url : "/fallback.jpg"}
+          src={user.avatar_url ? user.avatar_url : "/fallback.jpg"}
           alt="Аватар"
           style={{ width: "150px", borderRadius: "50%" }}
         />
       </div>
+
       {/* Загрузка нового аватара */}
       <div className="mb-4">
         <label className="block mb-1">Загрузить аватар:</label>
@@ -125,6 +151,8 @@ useEffect(() => {
           className="border p-1"
         />
       </div>
+
+      {/* Блок редактирования профиля */}
       {isEditing ? (
         <form onSubmit={handleSave} className="space-y-4">
           <div>
@@ -182,6 +210,7 @@ useEffect(() => {
               className="w-full p-2 border rounded"
             />
           </div>
+
           <div className="flex space-x-4">
             <button
               type="submit"
@@ -201,19 +230,19 @@ useEffect(() => {
       ) : (
         <div className="space-y-2">
           <p>
-            <strong>Имя пользователя:</strong> {user?.username}
+            <strong>Имя пользователя:</strong> {user.username}
           </p>
           <p>
-            <strong>Email:</strong> {user?.email}
+            <strong>Email:</strong> {user.email}
           </p>
           <p>
-            <strong>Имя:</strong> {user?.first_name}
+            <strong>Имя:</strong> {user.first_name}
           </p>
           <p>
-            <strong>Фамилия:</strong> {user?.last_name}
+            <strong>Фамилия:</strong> {user.last_name}
           </p>
           <p>
-            <strong>Телефон:</strong> {user?.phone}
+            <strong>Телефон:</strong> {user.phone}
           </p>
           <button
             onClick={handleEditToggle}
@@ -223,6 +252,17 @@ useEffect(() => {
           </button>
         </div>
       )}
+
+      {/* Кнопка «Выйти» (Logout) */}
+      <div className="mt-6">
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-800 transition"
+        >
+          Выйти
+        </button>
+      </div>
+
       {error && <p className="text-center text-red-500 mt-4">{error}</p>}
     </div>
   );

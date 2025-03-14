@@ -54,23 +54,9 @@ export default function HomePage() {
 
   return (
     <main className="main-container" style={{ background: "#f6f6f6", minHeight: "100vh", padding: "20px 0" }}>
-      {/* Хедер */}
-      <header className="header">
-        <h1>Estate</h1>
-        <nav>
-          <Link href="/register">
-            <button className="nav-button">Регистрация</button>
-          </Link>
-          <Link href="/login">
-            <button className="nav-button">Вход</button>
-          </Link>
-          <Link href="/profile">
-            <button className="nav-button">Профиль</button>
-          </Link>
-        </nav>
-      </header>
-
-      {/* Секция поиска */}
+     
+     
+     {/* Секция поиска */}
       <section className="search-container">
         <h2 style={{ fontSize: "1.75rem", marginBottom: "10px" }}>Поиск недвижимости</h2>
         <div style={{ display: "flex" }}>
@@ -103,17 +89,6 @@ export default function HomePage() {
 
       {/* Дополнительная секция поиска и фильтров */}
       <section>
-        <div className="search-bar" style={{ marginBottom: "20px" }}>
-          <input
-            type="text"
-            placeholder="Введите город, район, улицу или ЖК..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: "70%", padding: "10px", marginRight: "8px" }}
-          />
-          <button style={{ padding: "10px 20px" }}>Поиск</button>
-        </div>
-
         <div className="categories" style={{ marginBottom: "20px" }}>
           <button
             onClick={() => setSelectedCategory("buy")}

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from app import schemas, crud, auth, models
 from app.database import SessionLocal
@@ -61,7 +61,7 @@ def read_properties(
     sort_order: Optional[str] = "asc",
     db: Session = Depends(get_db)
 ):
-    properties = crud.get_properties(
+    props = crud.get_properties(
         db,
         skip=skip,
         limit=limit,
@@ -76,14 +76,18 @@ def read_properties(
         sort_by=sort_by,
         sort_order=sort_order
     )
-    return [schemas.PropertyOut.model_validate(prop) for prop in properties]
-
+    return [schemas.PropertyOut.model_validate(p) for p in props]
 
 # Эндпоинт для получения конкретного объявления
 @router.get("/{property_id}", response_model=schemas.PropertyOut)
 def read_property(property_id: int, db: Session = Depends(get_db)):
-    db_property = crud.get_property(db, property_id=property_id)
-    if db_property is None:
+    db_property = (
+        db.query(models.Property)
+        .options(selectinload(models.Property.images))
+        .filter(models.Property.id == property_id)
+        .first()
+    )
+    if not db_property:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     return schemas.PropertyOut.model_validate(db_property)
 

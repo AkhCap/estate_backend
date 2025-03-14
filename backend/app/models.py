@@ -64,17 +64,18 @@ class Property(Base):
     favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")  
     reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
     history = relationship("History", back_populates="property", cascade="all, delete-orphan")
-    images = relationship("PropertyImage", back_populates="property", cascade="all, delete-orphan")  
+    images = relationship("PropertyImage", back_populates="property", cascade="all, delete", passive_deletes=True)
+
  
 
 class PropertyImage(Base):
     __tablename__ = "property_images"
-    id = Column(Integer, primary_key=True, index=True)  # ← Добавьте этот столбец!
+
+    id = Column(Integer, primary_key=True, index=True)
     property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
     image_url = Column(String, nullable=False)
     uploaded_at = Column(DateTime, server_default=func.now())
 
-    # Устанавливаем связь с недвижимостью
     property = relationship("Property", back_populates="images")
 
     
