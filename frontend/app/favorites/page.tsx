@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import axios from "../../lib/axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatPrice } from "../../lib/utils";
 
 export default function Favorites() {
   const [favorites, setFavorites] = useState<any[]>([]);
@@ -37,7 +38,7 @@ export default function Favorites() {
       {favorites.map((fav) => (
         <div key={fav.id} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
           <h3>{fav.title}</h3>
-          <p>Цена: {fav.price}</p>
+          <p>Цена: {formatPrice(fav.price)} ₽</p>
           {/* Можно добавить кнопку для удаления из избранного */}
         </div>
       ))}

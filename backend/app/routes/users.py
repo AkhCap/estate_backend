@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
+from datetime import timedelta
 
 from app import schemas, models, crud, auth
 from app.database import SessionLocal, engine
@@ -28,20 +29,31 @@ def get_db():
 
 @router.post("/register", response_model=schemas.UserOut)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, email=user.email)
-    if db_user:
+    if crud.get_user_by_email(db, email=user.email):
         raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
     hashed_password = pwd_context.hash(user.password)
     created_user = crud.create_user(db=db, user=user, hashed_password=hashed_password)
     return created_user
 
-@router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = crud.get_user_by_email(db, email=form_data.username)
-    if not user or not pwd_context.verify(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Неверные учетные данные")
-    token = auth.create_access_token(data={"sub": user.email})
-    return {"access_token": token, "token_type": "bearer"}
+@router.post("/login", response_model=schemas.Token)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный email или пароль",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = auth.create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # --- Профиль пользователя ---
 
@@ -65,9 +77,11 @@ def update_user_me(
     user = crud.get_user_by_email(db, email=current_user)
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
     updated_user = crud.update_user(db, user_id=user.id, updated_data=updated_data)
     if not updated_user:
         raise HTTPException(status_code=400, detail="Ошибка обновления профиля")
+    
     return schemas.UserOut.model_validate(updated_user)
 
 # --- Загрузка аватара ---

@@ -1,269 +1,342 @@
 "use client";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import axios from "../../lib/axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-interface User {
-  username: string;
+interface UserProfile {
+  id: number;
   email: string;
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  avatar_url?: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  avatar_url: string | null;
+  role: string;
 }
 
-export default function Profile() {
+export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [error, setError] = useState("");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // Форма для редактирования профиля
-  const [formData, setFormData] = useState<User>({
-    username: "",
-    email: "",
-    first_name: "",
-    last_name: "",
-    phone: "",
-    avatar_url: "",
-  });
-
-  // Получаем токен из localStorage (если он есть)
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  // При первом рендере проверяем наличие токена и загружаем профиль
   useEffect(() => {
-    if (!token) {
-      setError("Пожалуйста, войдите в систему");
-      router.push("/login");
-      return;
+    fetchProfile();
+  }, []);
+
+  const formatErrorMessage = (errorData: any): string => {
+    if (typeof errorData === 'string') {
+      return errorData;
     }
-    console.log("Токен из localStorage:", token);
-
-    axios
-      .get("/users/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        console.log("Данные профиля:", res.data);
-        setUser(res.data);
-        setFormData({
-          username: res.data.username || "",
-          email: res.data.email || "",
-          first_name: res.data.first_name || "",
-          last_name: res.data.last_name || "",
-          phone: res.data.phone || "",
-          avatar_url: res.data.avatar_url || "",
-        });
-      })
-      .catch((err) => {
-        console.error("Ошибка получения профиля:", err);
-        setError("Ошибка получения данных профиля");
-      });
-  }, [token, router]);
-
-  // Функция переключения режима редактирования
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
+    
+    if (errorData.detail) {
+      return String(errorData.detail);
+    }
+    
+    if (Array.isArray(errorData)) {
+      return errorData
+        .map((item: any) => {
+          if (typeof item === 'object' && item.msg) {
+            return String(item.msg);
+          }
+          return String(item);
+        })
+        .filter(Boolean)
+        .join(', ');
+    }
+    
+    if (typeof errorData === 'object') {
+      const messages = Object.entries(errorData)
+        .map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return value
+              .map((item: any) => {
+                if (typeof item === 'object' && item.msg) {
+                  return String(item.msg);
+                }
+                return String(item);
+              })
+              .filter(Boolean)
+              .join(', ');
+          }
+          if (typeof value === 'object' && value !== null) {
+            const errorObj = value as { msg?: string };
+            if (errorObj.msg) {
+              return String(errorObj.msg);
+            }
+            return Object.values(value)
+              .map(v => String(v))
+              .filter(Boolean)
+              .join(', ');
+          }
+          return String(value);
+        })
+        .filter(Boolean)
+        .join(', ');
+      return messages || "Произошла ошибка при обработке запроса";
+    }
+    
+    return "Произошла ошибка при обработке запроса";
   };
 
-  // Функция сохранения изменений профиля
-  const handleSave = async (e: React.FormEvent) => {
+  const fetchProfile = async () => {
+    try {
+      const response = await axios.get("/users/me");
+      setProfile(response.data);
+      setFormData(response.data);
+    } catch (err: any) {
+      const errorMessage = err.response?.data 
+        ? formatErrorMessage(err.response.data)
+        : "Ошибка при загрузке профиля";
+      
+      setError(errorMessage);
+      console.error('Ошибка загрузки профиля:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAvatar(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    setError("");
+    setSuccess("");
+
     try {
-      const res = await axios.put("/users/me", formData, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      const updateData: any = {};
+      
+      // Отправляем только измененные поля
+      const allowedFields = ['email', 'first_name', 'last_name', 'phone'];
+      allowedFields.forEach(field => {
+        if (
+          formData[field] !== undefined && 
+          formData[field] !== null && 
+          profile && 
+          formData[field] !== profile[field]
+        ) {
+          updateData[field] = formData[field];
+        }
       });
-      setUser(res.data);
+
+      // Отправляем данные в формате JSON
+      await axios.put("/users/me", updateData);
+
+      // Если есть аватар, отправляем его отдельно
+      if (avatar) {
+        const avatarFormData = new FormData();
+        avatarFormData.append("file", avatar);
+        await axios.post("/users/me/avatar", avatarFormData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      setSuccess("Профиль успешно обновлен");
       setIsEditing(false);
+      fetchProfile();
     } catch (err: any) {
-      console.error("Ошибка обновления профиля:", err.response?.data);
-      setError("Ошибка обновления профиля");
+      const errorMessage = err.response?.data 
+        ? formatErrorMessage(err.response.data)
+        : "Ошибка при обновлении профиля";
+      
+      setError(errorMessage);
+      console.error('Ошибка обновления профиля:', err);
     }
   };
 
-  // Функция для загрузки аватара
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!token || !e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    const formDataFile = new FormData();
-    formDataFile.append("file", file);
-    try {
-      const res = await axios.post("/users/me/avatar", formDataFile, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Обновляем данные пользователя с новым avatar_url
-      setUser(res.data);
-      setFormData((prev) => ({ ...prev, avatar_url: res.data.avatar_url }));
-    } catch (err: any) {
-      console.error("Ошибка загрузки аватара:", err.response?.data);
-      setError("Ошибка загрузки аватара");
-    }
-  };
-
-  // Функция «Выйти» (Logout)
-  const handleLogout = () => {
-    // Удаляем токен из localStorage
-    localStorage.removeItem("token");
-    // Перенаправляем на страницу логина
-    router.push("/login");
-  };
-
-  // Если есть ошибка, отображаем её
-  if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
-  }
-
-  // Если user ещё не загрузился, показываем «Загрузка...»
-  if (!user) {
-    return <p className="text-center">Загрузка...</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-4">Профиль пользователя</h1>
-
-      {/* Отображение аватара */}
-      <div className="mb-4">
-        <img
-          src={user.avatar_url ? user.avatar_url : "/fallback.jpg"}
-          alt="Аватар"
-          style={{ width: "150px", borderRadius: "50%" }}
-        />
+    <div className="max-w-3xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Мой профиль</h1>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsEditing(!isEditing)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+        >
+          {isEditing ? "Отменить" : "Редактировать"}
+        </motion.button>
       </div>
 
-      {/* Загрузка нового аватара */}
-      <div className="mb-4">
-        <label className="block mb-1">Загрузить аватар:</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleAvatarUpload}
-          className="border p-1"
-        />
-      </div>
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>
+      )}
 
-      {/* Блок редактирования профиля */}
-      {isEditing ? (
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block mb-1">Имя пользователя:</label>
-            <input
-              type="text"
-              value={formData.username}
-              onChange={(e) =>
-                setFormData({ ...formData, username: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Email:</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Имя:</label>
-            <input
-              type="text"
-              value={formData.first_name}
-              onChange={(e) =>
-                setFormData({ ...formData, first_name: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Фамилия:</label>
-            <input
-              type="text"
-              value={formData.last_name}
-              onChange={(e) =>
-                setFormData({ ...formData, last_name: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Телефон:</label>
-            <input
-              type="text"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
-              Сохранить изменения
-            </button>
-            <button
-              type="button"
-              onClick={handleEditToggle}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
-            >
-              Отмена
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="space-y-2">
-          <p>
-            <strong>Имя пользователя:</strong> {user.username}
-          </p>
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-          <p>
-            <strong>Имя:</strong> {user.first_name}
-          </p>
-          <p>
-            <strong>Фамилия:</strong> {user.last_name}
-          </p>
-          <p>
-            <strong>Телефон:</strong> {user.phone}
-          </p>
-          <button
-            onClick={handleEditToggle}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          >
-            Редактировать профиль
-          </button>
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-xl">
+          {success}
         </div>
       )}
 
-      {/* Кнопка «Выйти» (Logout) */}
-      <div className="mt-6">
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-800 transition"
-        >
-          Выйти
-        </button>
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Аватар */}
+        <div className="flex items-center space-x-6">
+          <div className="relative">
+            <img
+              src={
+                avatar
+                  ? URL.createObjectURL(avatar)
+                  : profile?.avatar_url
+                  ? profile.avatar_url.startsWith('http')
+                    ? profile.avatar_url
+                    : `${process.env.NEXT_PUBLIC_API_URL}${profile.avatar_url}`
+                  : "/default-avatar.jpg"
+              }
+              alt={profile?.username}
+              className="w-24 h-24 rounded-full object-cover ring-4 ring-blue-50"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "/default-avatar.jpg";
+              }}
+            />
+            {isEditing && (
+              <label
+                htmlFor="avatar"
+                className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors"
+              >
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                <input
+                  type="file"
+                  id="avatar"
+                  name="avatar"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {profile?.first_name} {profile?.last_name}
+            </h2>
+            <p className="text-gray-600">{profile?.email}</p>
+          </div>
+        </div>
 
-      {error && <p className="text-center text-red-500 mt-4">{error}</p>}
+        {/* Поля формы */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Имя
+            </label>
+            <input
+              type="text"
+              name="first_name"
+              value={formData.first_name || ""}
+              onChange={handleInputChange}
+              disabled={!isEditing}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Фамилия
+            </label>
+            <input
+              type="text"
+              name="last_name"
+              value={formData.last_name || ""}
+              onChange={handleInputChange}
+              disabled={!isEditing}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Телефон
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone || ""}
+              onChange={handleInputChange}
+              disabled={!isEditing}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email || ""}
+              onChange={handleInputChange}
+              disabled={!isEditing}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+        </div>
+
+        {/* Кнопки */}
+        {isEditing && (
+          <div className="flex justify-end space-x-4">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setIsEditing(false);
+                setFormData(profile || {});
+                setAvatar(null);
+              }}
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+            >
+              Отмена
+            </motion.button>
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+            >
+              Сохранить
+            </motion.button>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

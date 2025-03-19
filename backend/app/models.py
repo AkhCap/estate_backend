@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func, ARRAY
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -46,7 +46,7 @@ class Property(Base):
     description = Column(String)
     price = Column(Float, nullable=False)
     address = Column(String, nullable=False)
-    rooms = Column(Integer)
+    rooms = Column(String)
     area = Column(Float)
     floor = Column(Integer)
     total_floors = Column(Integer)  
@@ -55,6 +55,27 @@ class Property(Base):
     longitude = Column(Float)
     image_url = Column(String)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    ceiling_height = Column(Float, nullable=True)
+    property_condition = Column(String, nullable=True)
+    has_balcony = Column(Boolean, default=False)
+    window_view = Column(ARRAY(String), default=list)
+    bathroom = Column(String, nullable=True)
+    bath_type = Column(String, nullable=True)
+    heating = Column(String, nullable=True)
+    renovation = Column(String, nullable=True)
+    lifts_passenger = Column(Integer, default=0)
+    lifts_freight = Column(Integer, default=0)
+    parking = Column(ARRAY(String), default=list)
+    prepayment = Column(String, default="нет")
+    deposit = Column(Float, default=0.0)
+    living_conditions = Column(ARRAY(String), default=list)
+    who_rents = Column(String, nullable=True)
+    landlord_contact = Column(String, nullable=True)
+    contact_method = Column(ARRAY(String), default=list)
+    build_year = Column(Integer, nullable=True)
+    furniture = Column(ARRAY(String), default=list)
+    appliances = Column(ARRAY(String), default=list)
+    connectivity = Column(ARRAY(String), default=list)
     
     # ENUM теперь соответствует Pydantic
     deal_type = Column(Enum(DealTypeEnum, name="deal_type_enum", create_type=False), nullable=False)

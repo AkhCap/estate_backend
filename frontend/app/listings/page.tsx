@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { formatPrice } from "../../lib/utils";
 
 const mockListings = [
   { 
@@ -43,7 +44,7 @@ export default function ListingsPage() {
               {/* Отображаем ПЕРВОЕ изображение из списка */}
               <img src={listing.images[0]} alt={listing.title} className="listing-image" />
               <h3>{listing.title}</h3>
-              <p>Цена: {listing.price.toLocaleString()} ₽</p>
+              <p>Цена: {formatPrice(listing.price)} ₽</p>
               <p>Комнат: {listing.rooms}</p>
               <p>Площадь: {listing.area} м²</p>
 

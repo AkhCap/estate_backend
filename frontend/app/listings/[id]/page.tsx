@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatPrice } from "../../../lib/utils";
 
 const mockListings = [
   { 
@@ -53,7 +54,7 @@ export default function ListingPage() {
       </div>
 
       <h1>{listing.title}</h1>
-      <p><strong>Цена:</strong> {listing.price.toLocaleString()} ₽</p>
+      <p><strong>Цена:</strong> {formatPrice(listing.price)} ₽</p>
       <p><strong>Комнат:</strong> {listing.rooms}</p>
       <p><strong>Площадь:</strong> {listing.area} м²</p>
       <p>{listing.description}</p>

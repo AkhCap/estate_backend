@@ -2,13 +2,13 @@
 // frontend/lib/axios.ts
 import axios from "axios";
 
-const instance = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: { "Content-Type": "application/json" },
-  timeout: 10000,
+const axiosInstance = axios.create({
+  baseURL: "http://localhost:8000",
+  withCredentials: true,
 });
 
-instance.interceptors.request.use(
+// Добавляем перехватчик запросов
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -16,22 +16,21 @@ instance.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
-);
-
-
-instance.interceptors.response.use(
-  (response) => response,
-  (error) => Promise.reject(error)
-);
-
-// Перехватчик ответа: возвращаем ответ или ошибку
-instance.interceptors.response.use(
-  (response) => response,
   (error) => {
-    // Можно добавить обработку ошибок, например, перенаправление на страницу логина
     return Promise.reject(error);
   }
 );
 
-export default instance;
+// Добавляем перехватчик ответов
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;
