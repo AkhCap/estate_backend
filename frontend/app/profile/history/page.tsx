@@ -8,6 +8,8 @@ import { formatPrice } from "../../../lib/utils";
 import { motion } from "framer-motion";
 import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaClock, FaTrash, FaRegCalendarAlt, FaSearch } from "react-icons/fa";
 
+const BASE_URL = "http://localhost:8000";
+
 interface Property {
   id: number;
   title: string;
@@ -18,6 +20,7 @@ interface Property {
   area: number;
   images: Array<{ id: number; image_url: string }>;
   viewed_at: string;
+  created_at: string;
 }
 
 const container = {
@@ -33,6 +36,25 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'Дата не указана';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Дата не указана';
+    }
+    
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch (error) {
+    return 'Дата не указана';
+  }
 };
 
 export default function HistoryPage() {
@@ -261,7 +283,7 @@ export default function HistoryPage() {
                   {/* Изображение */}
                   <div className="relative aspect-[4/3]">
                     <img
-                      src={property.images[0] ? `${process.env.NEXT_PUBLIC_API_URL}${property.images[0].image_url}` : "/no-image.jpg"}
+                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                       alt={property.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
@@ -291,26 +313,24 @@ export default function HistoryPage() {
                       <FaMapMarkerAlt className="mr-2 flex-shrink-0" />
                       <p className="text-sm line-clamp-1">{property.address}</p>
                     </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <FaBed className="mr-2" />
-                        <span>{property.rooms}</span>
+                    <div className="flex items-center gap-4 text-gray-600 mb-3">
+                      <div className="flex items-center gap-1">
+                        <FaBed className="w-4 h-4" />
+                        <span>{property.rooms} комнат</span>
                       </div>
-                      <div className="flex items-center">
-                        <FaRulerCombined className="mr-2" />
-                        <span>{property.area} м²</span>
+                      <div className="flex items-center gap-1">
+                        <FaRulerCombined className="w-4 h-4" />
+                        <span>Площадь: {property.area} м²</span>
                       </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaRegCalendarAlt className="mr-2" />
-                        <span>
-                          Просмотрено: {new Date(property.viewed_at).toLocaleDateString('ru-RU', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </span>
+                    <div className="flex flex-col gap-2 text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                        <span>Создано: {formatDate(property.created_at)}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                        <span>Просмотрено: {formatDate(property.viewed_at)}</span>
                       </div>
                     </div>
                   </div>

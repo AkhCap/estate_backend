@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaEdit, FaTrash, FaEye, FaPlus } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaEdit, FaTrash, FaEye, FaPlus, FaRegCalendarAlt } from "react-icons/fa";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -22,6 +22,10 @@ interface Property {
   views_count: number;
   status: "active" | "inactive" | "pending";
   created_at: string;
+  deal_type: "sale" | "rent";
+  property_type: string;
+  floor: number;
+  total_floors: number;
 }
 
 const container = {
@@ -51,23 +55,25 @@ const statusLabels = {
   pending: "На модерации"
 };
 
-const formatCreatedDate = (dateString: string | null) => {
-  if (!dateString || dateString === "null") return 'Дата не указана';
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'Дата не указана';
   
   try {
-    // Если дата приходит в формате "YYYY-MM-DD HH:mm:ss", преобразуем её в ISO формат
-    const isoDate = dateString.replace(' ', 'T');
-    const date = new Date(isoDate);
+    // Преобразуем строку даты в объект Date
+    const date = new Date(dateString);
     
     // Проверяем, что дата валидная
-    if (isNaN(date.getTime())) return 'Дата не указана';
+    if (isNaN(date.getTime())) {
+      return 'Дата не указана';
+    }
     
-    return date.toLocaleString('ru-RU', {
-      year: 'numeric',
+    // Форматируем дату
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
       month: 'long',
-      day: 'numeric'
+      year: 'numeric'
     });
-  } catch (e) {
+  } catch (error) {
     return 'Дата не указана';
   }
 };
@@ -87,6 +93,11 @@ export default function MyPropertiesPage() {
   const fetchProperties = async () => {
     try {
       const response = await axios.get("/users/me/properties");
+      console.log("Properties response:", response.data);
+      if (response.data.length > 0) {
+        console.log("First property:", response.data[0]);
+        console.log("Deal type:", response.data[0].deal_type);
+      }
       setProperties(response.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Ошибка при загрузке объявлений");
@@ -114,10 +125,6 @@ export default function MyPropertiesPage() {
     }
   };
 
-  const handleEdit = (propertyId: number) => {
-    router.push(`/properties/edit/${propertyId}`);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -135,138 +142,110 @@ export default function MyPropertiesPage() {
   }
 
   return (
-    <div>
+    <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Мои объявления
-        </h1>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => router.push("/properties/create")}
-          className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-        >
-          <FaPlus className="mr-2" />
-          Добавить объявление
-        </motion.button>
+        <h1 className="text-3xl font-bold">Мои объявления</h1>
+        <Link href="/properties/create">
+          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+            <FaPlus /> Добавить объявление
+          </button>
+        </Link>
       </div>
 
-      {properties.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mb-6">
-            <FaPlus className="w-16 h-16 text-gray-300 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            У вас пока нет объявлений
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Создайте свое первое объявление, чтобы начать продавать или сдавать в аренду
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => router.push("/properties/create")}
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+      <div className="space-y-6">
+        {properties.map((property) => (
+          <motion.div
+            key={property.id}
+            variants={item}
+            className="group relative"
           >
-            <FaPlus className="mr-2" />
-            Добавить объявление
-          </motion.button>
-        </div>
-      ) : (
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 gap-6"
-        >
-          {properties.map((property) => (
-            <motion.div
-              key={property.id}
-              variants={item}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden"
-            >
-              <div className="flex flex-col md:flex-row">
-                {/* Изображение */}
-                <div className="relative md:w-72 aspect-[4/3] md:aspect-auto">
-                  <img
-                    src={property.images[0] ? `${BASE_URL}${property.images[0].image_url}` : "/no-image.jpg"}
-                    alt={property.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/no-image.jpg';
-                    }}
-                  />
-                  <div className="absolute top-4 left-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[property.status]}`}>
-                      {statusLabels[property.status]}
-                    </span>
+            <Link href={`/properties/${property.id}`}>
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex flex-col md:flex-row">
+                  {/* Изображение */}
+                  <div className="relative md:w-72 aspect-[4/3] md:aspect-auto">
+                    <img
+                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
+                      alt={property.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/no-image.jpg';
+                      }}
+                    />
                   </div>
-                </div>
 
-                {/* Информация */}
-                <div className="flex-1 p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {property.title}
-                      </h3>
-                      <div className="flex items-center text-gray-600 mb-4">
-                        <FaMapMarkerAlt className="mr-2" />
-                        <p className="text-sm">{property.address}</p>
+                  {/* Информация */}
+                  <div className="flex-1 p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
+                          {property.title}
+                        </h3>
+                        <div className="flex items-center text-gray-600 mb-4">
+                          <FaMapMarkerAlt className="mr-2" />
+                          <p className="text-sm line-clamp-1">{property.address}</p>
+                        </div>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {formatPrice(property.price)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-gray-600 mb-3">
+                      <div className="flex items-center gap-1">
+                        <FaBed className="w-4 h-4" />
+                        <span>{property.rooms} комнат</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FaRulerCombined className="w-4 h-4" />
+                        <span>Площадь: {property.area} м²</span>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatPrice(property.price)}
-                    </p>
-                  </div>
 
-                  <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center">
-                      <FaBed className="mr-2" />
-                      <span>{property.rooms}</span>
+                    <div className="flex items-center text-sm text-gray-500 mb-4">
+                      <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                      <span>Создано: {formatDate(property.created_at)}</span>
                     </div>
-                    <div className="flex items-center">
-                      <FaRulerCombined className="mr-2" />
-                      <span>{property.area} м²</span>
-                    </div>
-                    <div className="flex items-center">
-                      <FaEye className="mr-2" />
-                      <span>{property.views_count} просмотров</span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                      Создано: {formatCreatedDate(property.created_at)}
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleEdit(property.id)}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push(`/properties/edit/${property.id}`);
+                        }}
+                        className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1.5"
                       >
-                        <FaEdit className="mr-2" />
-                        Редактировать
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleDelete(property.id)}
-                        className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                        <FaEdit className="w-3 h-3" /> Редактировать
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDelete(property.id);
+                        }}
+                        className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
                       >
-                        <FaTrash className="mr-2" />
-                        Удалить
-                      </motion.button>
+                        <FaTrash className="w-3 h-3" /> Удалить
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+            </Link>
+          </motion.div>
+        ))}
+
+        {properties.length === 0 && (
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
+            <p className="text-gray-600 mb-4">У вас пока нет объявлений</p>
+            <Link href="/properties/create">
+              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                <FaPlus /> Создать первое объявление
+              </button>
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* Модальное окно подтверждения удаления */}
       {showDeleteModal && (

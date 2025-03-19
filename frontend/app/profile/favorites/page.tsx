@@ -15,7 +15,8 @@ import {
   FaParking,
   FaBath,
   FaSortAmountDown,
-  FaSortAmountUp
+  FaSortAmountUp,
+  FaRegCalendarAlt
 } from "react-icons/fa";
 
 const BASE_URL = "http://localhost:8000";
@@ -55,6 +56,25 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'Дата не указана';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Дата не указана';
+    }
+    
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch (error) {
+    return 'Дата не указана';
+  }
 };
 
 export default function FavoritesPage() {
@@ -236,7 +256,7 @@ export default function FavoritesPage() {
                     {/* Изображение */}
                     <div className="relative md:w-72 aspect-[4/3] md:aspect-auto">
                       <img
-                        src={property.images[0] ? `${BASE_URL}${property.images[0].image_url}` : "/no-image.jpg"}
+                        src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                         alt={property.title}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -250,12 +270,12 @@ export default function FavoritesPage() {
                     <div className="flex-1 p-6">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
                             {property.title}
                           </h3>
                           <div className="flex items-center text-gray-600 mb-4">
                             <FaMapMarkerAlt className="mr-2" />
-                            <p className="text-sm">{property.address}</p>
+                            <p className="text-sm line-clamp-1">{property.address}</p>
                           </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-900">
@@ -263,15 +283,20 @@ export default function FavoritesPage() {
                         </p>
                       </div>
 
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center">
-                          <FaBed className="mr-2 text-gray-400" />
-                          <span>Комнат: {property.rooms}</span>
+                      <div className="flex items-center gap-4 text-gray-600 mb-3">
+                        <div className="flex items-center gap-1">
+                          <FaBed className="w-4 h-4" />
+                          <span>{property.rooms} комнат</span>
                         </div>
-                        <div className="flex items-center">
-                          <FaRulerCombined className="mr-2 text-gray-400" />
+                        <div className="flex items-center gap-1">
+                          <FaRulerCombined className="w-4 h-4" />
                           <span>Площадь: {property.area} м²</span>
                         </div>
+                      </div>
+
+                      <div className="flex items-center text-sm text-gray-500">
+                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                        <span>Создано: {formatDate(property.created_at)}</span>
                       </div>
 
                       <div className="flex items-center justify-end">

@@ -6,7 +6,7 @@ import Link from "next/link";
 import axios from "../../lib/axios";
 import { formatPrice } from "../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt } from "react-icons/fa";
 
 // Добавляем базовый URL для изображений
 const BASE_URL = "http://localhost:8000";
@@ -46,6 +46,7 @@ interface Property {
   contact_method: string[];
   owner_id: number;
   images: Image[];
+  created_at: string;
 }
 
 const container = {
@@ -61,6 +62,26 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
+};
+
+// Функция форматирования даты
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'Дата не указана';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Дата не указана';
+    }
+    
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch (error) {
+    return 'Дата не указана';
+  }
 };
 
 export default function PropertiesPage() {
@@ -196,9 +217,9 @@ export default function PropertiesPage() {
               <Link href={`/properties/${property.id}`}>
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
                   {/* Изображение */}
-                  <div className="relative aspect-[4/3]">
+                  <div className="relative h-64">
                     <img
-                      src={property.images[0] ? `${BASE_URL}${property.images[0].image_url}` : "/no-image.jpg"}
+                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                       alt={property.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
@@ -206,6 +227,9 @@ export default function PropertiesPage() {
                         target.src = '/no-image.jpg';
                       }}
                     />
+                    <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
+                      {property.deal_type === "sale" ? "Продажа" : "Аренда"}
+                    </div>
                     <button
                       onClick={(e) => toggleFavorite(e, property.id)}
                       className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
@@ -230,7 +254,7 @@ export default function PropertiesPage() {
                       <FaMapMarkerAlt className="mr-2" />
                       <p className="text-sm line-clamp-1">{property.address}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-gray-600">
+                    <div className="flex items-center gap-4 text-gray-600 mb-3">
                       <div className="flex items-center gap-1">
                         <FaBed className="w-4 h-4" />
                         <span>{property.rooms} комнат</span>
@@ -239,6 +263,10 @@ export default function PropertiesPage() {
                         <FaRulerCombined className="w-4 h-4" />
                         <span>Площадь: {property.area} м²</span>
                       </div>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                      <span>Создано: {formatDate(property.created_at)}</span>
                     </div>
                   </div>
                 </div>

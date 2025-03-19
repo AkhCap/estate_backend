@@ -7,6 +7,7 @@ import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import ImageCarousel from "../../../components/ImageCarousel";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -252,15 +253,12 @@ export default function PropertyDetailPage() {
               </div>
             </motion.div>
 
-            {/* Галерея */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl p-8 shadow-lg overflow-hidden"
-            >
-              <ImageGallery images={property.images.map(image => image.image_url)} />
-            </motion.div>
+            {/* Карусель изображений */}
+            <div className="relative w-full h-[500px] bg-gray-100 rounded-2xl overflow-hidden">
+              <ImageCarousel
+                images={property.images.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
+              />
+            </div>
 
             {/* Описание объявления */}
             <motion.div 
