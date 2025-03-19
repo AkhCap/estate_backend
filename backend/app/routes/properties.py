@@ -13,7 +13,7 @@ from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut
 router = APIRouter()
 
 # Путь для сохранения изображений
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "uploads/properties"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -82,7 +82,7 @@ async def upload_images(property_id: int, files: List[UploadFile] = File(...), d
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        new_image = PropertyImage(property_id=property_id, image_url=f"/uploads/{file.filename}")
+        new_image = PropertyImage(property_id=property_id, image_url=file.filename)
         db.add(new_image)
         db.commit()
         db.refresh(new_image)

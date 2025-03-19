@@ -76,6 +76,7 @@ class Property(Base):
     furniture = Column(ARRAY(String), default=list)
     appliances = Column(ARRAY(String), default=list)
     connectivity = Column(ARRAY(String), default=list)
+    created_at = Column(DateTime, server_default=func.now())
     
     # ENUM теперь соответствует Pydantic
     deal_type = Column(Enum(DealTypeEnum, name="deal_type_enum", create_type=False), nullable=False)
