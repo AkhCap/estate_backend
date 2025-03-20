@@ -22,7 +22,8 @@ if not os.path.exists(UPLOAD_DIR):
 @router.get("/list", response_model=List[PropertyOut])
 async def get_properties_list(db: Session = Depends(get_db)):
     """
-    Получение списка объявлений без создания записи в истории просмотров
+    Получение списка объявлений без создания записи в истории просмотров.
+    Доступно без аутентификации.
     """
     try:
         properties = db.query(Property).all()
@@ -35,7 +36,8 @@ async def get_properties_list(db: Session = Depends(get_db)):
 @router.get("", response_model=List[PropertyOut])
 async def get_properties(db: Session = Depends(get_db)):
     """
-    Для обратной совместимости, перенаправляет на /list
+    Для обратной совместимости, перенаправляет на /list.
+    Доступно без аутентификации.
     """
     return await get_properties_list(db)
 
@@ -63,18 +65,18 @@ async def get_property(
     property_id: int, 
     is_detail_view: bool = False,
     db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
+    current_user: str = Depends(auth.get_optional_current_user)
 ):
     """
     Получение детальной информации об объявлении.
-    Создает запись в истории просмотров только при просмотре детальной страницы.
+    Доступно без аутентификации, но запись в историю создается только для авторизованных пользователей.
     """
     prop = db.query(Property).filter(Property.id == property_id).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
-    # Создаем запись в истории только если это просмотр детальной страницы
-    if is_detail_view:
+    # Создаем запись в истории только если пользователь авторизован
+    if is_detail_view and current_user:
         user = crud.get_user_by_email(db, email=current_user)
         if user:  # Если пользователь авторизован
             crud.create_history(db, HistoryCreate(property_id=property_id), user.id)

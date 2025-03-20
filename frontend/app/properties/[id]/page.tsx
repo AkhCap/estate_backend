@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -173,11 +173,13 @@ const ImageGallery = ({ images }) => {
 
 export default function PropertyDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [error, setError] = useState("");
   const [showPhone, setShowPhone] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -197,8 +199,13 @@ export default function PropertyDetailPage() {
           const favoritesResponse = await axios.get('/favorites');
           const favorites = favoritesResponse.data;
           setIsFavorite(favorites.some((fav: any) => fav.property_id === propertyResponse.data.id));
+          setIsAuthenticated(true);
         } catch (err) {
-          console.error('Ошибка при проверке избранного:', err);
+          if (err.response?.status === 401) {
+            setIsAuthenticated(false);
+          } else {
+            console.error('Ошибка при проверке избранного:', err);
+          }
         }
       } catch (err: any) {
         console.error("Error fetching property:", err);
@@ -211,6 +218,11 @@ export default function PropertyDetailPage() {
   const toggleFavorite = async () => {
     if (!property) return;
     
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    
     try {
       if (isFavorite) {
         await axios.delete(`/favorites/${property.id}`);
@@ -221,7 +233,18 @@ export default function PropertyDetailPage() {
       }
     } catch (err) {
       console.error('Ошибка при изменении избранного:', err);
+      if (err.response?.status === 401) {
+        router.push('/login');
+      }
     }
+  };
+
+  const handleContactClick = () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    setShowPhone(true);
   };
 
   if (error) return (
@@ -508,7 +531,7 @@ export default function PropertyDetailPage() {
                 {/* Кнопки связи */}
                 <div className="border-t border-gray-100 pt-6 space-y-3">
                   <button
-                    onClick={() => setShowPhone(!showPhone)}
+                    onClick={handleContactClick}
                     className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center"
                   >
                     {showPhone ? (

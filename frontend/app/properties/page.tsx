@@ -7,6 +7,7 @@ import axios from "../../lib/axios";
 import { formatPrice } from "../../lib/utils";
 import { motion } from "framer-motion";
 import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 // Добавляем базовый URL для изображений
 const BASE_URL = "http://localhost:8000";
@@ -89,18 +90,28 @@ export default function PropertiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Загружаем объявления используя новый endpoint
+        // Загружаем объявления
         const propertiesResponse = await axios.get("/properties/list");
         setProperties(propertiesResponse.data);
 
-        // Загружаем избранное
-        const favoritesResponse = await axios.get('/favorites');
-        const favoritesData = favoritesResponse.data;
-        setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
+        try {
+          // Пробуем загрузить избранное только если пользователь авторизован
+          const favoritesResponse = await axios.get('/favorites');
+          const favoritesData = favoritesResponse.data;
+          setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
+          setIsAuthenticated(true);
+        } catch (err) {
+          // Если получаем 401, значит пользователь не авторизован
+          if (err.response?.status === 401) {
+            setIsAuthenticated(false);
+          }
+        }
       } catch (err: any) {
         setError(err.response?.data?.detail || "Ошибка при загрузке данных");
         console.error(err);
@@ -113,6 +124,12 @@ export default function PropertiesPage() {
 
   const toggleFavorite = async (e: React.MouseEvent, propertyId: number) => {
     e.preventDefault(); // Предотвращаем переход по ссылке
+    
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
     try {
       if (favorites.has(propertyId)) {
         await axios.delete(`/favorites/${propertyId}`);
@@ -127,6 +144,9 @@ export default function PropertiesPage() {
       }
     } catch (err) {
       console.error('Ошибка при изменении избранного:', err);
+      if (err.response?.status === 401) {
+        router.push('/login');
+      }
     }
   };
 

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 load_dotenv()
 
 # Объект для получения токена из заголовка Authorization
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login", auto_error=False)
 
 # Секретный ключ и алгоритм для JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -50,6 +50,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    """
+    Получает текущего пользователя по токену (обязательная аутентификация).
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -63,3 +66,17 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return email
     except JWTError:
         raise credentials_exception
+
+def get_optional_current_user(token: str = Depends(oauth2_scheme)) -> Optional[str]:
+    """
+    Получает текущего пользователя по токену (опциональная аутентификация).
+    Возвращает None, если токен отсутствует или недействителен.
+    """
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        return email if email else None
+    except JWTError:
+        return None
