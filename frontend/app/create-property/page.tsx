@@ -542,6 +542,52 @@ export default function CreatePropertyPage() {
     updateStepStatus(10);
   };
 
+  const handleHeatingSelect = (hasHeating: "Да" | "Нет") => {
+    setFormData(prev => ({ ...prev, heating: hasHeating }));
+    updateStepStatus(8);
+  };
+
+  const handleApplianceToggle = (appliance: string) => {
+    setFormData(prev => {
+      const currentAppliances = prev.appliances || [];
+      const newAppliances = currentAppliances.includes(appliance)
+        ? currentAppliances.filter(a => a !== appliance)
+        : [...currentAppliances, appliance];
+      return { ...prev, appliances: newAppliances };
+    });
+    updateStepStatus(8);
+  };
+
+  const handleLiftChange = (type: 'passenger' | 'freight', value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      [type === 'passenger' ? 'liftsPassenger' : 'liftsFreight']: value
+    }));
+    updateStepStatus(8);
+  };
+
+  const handleFurnitureSelect = (type: string) => {
+    setFormData(prev => {
+      const currentFurniture = prev.furniture || [];
+      const newFurniture = currentFurniture.includes(type)
+        ? currentFurniture.filter(f => f !== type)
+        : [...currentFurniture, type];
+      return { ...prev, furniture: newFurniture };
+    });
+    updateStepStatus(8);
+  };
+
+  const handleConnectivitySelect = (type: string) => {
+    setFormData(prev => {
+      const currentConnectivity = prev.connectivity || [];
+      const newConnectivity = currentConnectivity.includes(type)
+        ? currentConnectivity.filter(c => c !== type)
+        : [...currentConnectivity, type];
+      return { ...prev, connectivity: newConnectivity };
+    });
+    updateStepStatus(8);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto">
@@ -888,6 +934,70 @@ export default function CreatePropertyPage() {
                 >
                   <div className="space-y-6">
                     <div>
+                      <label className={labelClass}>Год постройки</label>
+                      <input
+                        type="number"
+                        name="buildYear"
+                        value={formData.buildYear}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        min="1900"
+                        max={new Date().getFullYear()}
+                        placeholder="Например: 2020"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Отопление</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          className={formData.heating === "Да" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleHeatingSelect("Да")}
+                        >
+                          Есть
+                        </button>
+                        <button
+                          className={formData.heating === "Нет" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleHeatingSelect("Нет")}
+                        >
+                          Нет
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Лифты</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-600 mb-1 block">Пассажирский</label>
+                          <input
+                            type="number"
+                            name="liftsPassenger"
+                            value={formData.liftsPassenger}
+                            onChange={(e) => handleLiftChange('passenger', Number(e.target.value))}
+                            className={inputClass}
+                            min="0"
+                            max="10"
+                            placeholder="Количество"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 mb-1 block">Грузовой</label>
+                          <input
+                            type="number"
+                            name="liftsFreight"
+                            value={formData.liftsFreight}
+                            onChange={(e) => handleLiftChange('freight', Number(e.target.value))}
+                            className={inputClass}
+                            min="0"
+                            max="10"
+                            placeholder="Количество"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
                       <label className={labelClass}>Санузел</label>
                       <div className="grid grid-cols-2 gap-4">
                         <button
@@ -904,6 +1014,7 @@ export default function CreatePropertyPage() {
                         </button>
                       </div>
                     </div>
+
                     <div>
                       <label className={labelClass}>Балкон/лоджия</label>
                       <div className="grid grid-cols-2 gap-4">
@@ -919,6 +1030,87 @@ export default function CreatePropertyPage() {
                         >
                           Нет
                         </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Мебель</label>
+                      <div className="grid grid-cols-3 gap-4">
+                        {["Без мебели", "На кухне", "В комнатах"].map((furniture) => (
+                          <button
+                            key={furniture}
+                            className={`${
+                              formData.furniture?.includes(furniture)
+                                ? activeButtonClass
+                                : baseButtonClass
+                            } relative`}
+                            onClick={() => handleFurnitureSelect(furniture)}
+                          >
+                            {furniture}
+                            {formData.furniture?.includes(furniture) && (
+                              <span className="absolute top-2 right-2">
+                                <FaCheck className="w-3 h-3" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Связь</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {["Телефон", "Интернет"].map((connectivity) => (
+                          <button
+                            key={connectivity}
+                            className={`${
+                              formData.connectivity?.includes(connectivity)
+                                ? activeButtonClass
+                                : baseButtonClass
+                            } relative`}
+                            onClick={() => handleConnectivitySelect(connectivity)}
+                          >
+                            {connectivity}
+                            {formData.connectivity?.includes(connectivity) && (
+                              <span className="absolute top-2 right-2">
+                                <FaCheck className="w-3 h-3" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Бытовая техника</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          "Холодильник",
+                          "Стиральная машина",
+                          "Посудомоечная машина",
+                          "Телевизор",
+                          "Кондиционер",
+                          "Микроволновая печь",
+                          "Плита",
+                          "Духовка"
+                        ].map((appliance) => (
+                          <button
+                            key={appliance}
+                            className={`${
+                              formData.appliances?.includes(appliance)
+                                ? activeButtonClass
+                                : baseButtonClass
+                            } relative`}
+                            onClick={() => handleApplianceToggle(appliance)}
+                          >
+                            {appliance}
+                            {formData.appliances?.includes(appliance) && (
+                              <span className="absolute top-2 right-2">
+                                <FaCheck className="w-3 h-3" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
