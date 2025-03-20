@@ -5,22 +5,33 @@ import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "../../lib/axios";
 import { jwtDecode } from "jwt-decode";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationCircle } from "react-icons/fa";
 
 const baseButtonClass =
-  "bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-medium";
+  "px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 font-medium text-sm";
 
 const activeButtonClass =
-  "bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg transition-all duration-200 shadow-md transform scale-105 font-medium border-2 border-green-400";
+  "px-4 py-2.5 rounded-lg border-2 border-gray-900 bg-gray-900 text-white transition-all duration-200 font-medium text-sm";
 
-const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none";
-const labelClass = "block text-gray-700 font-medium mb-2";
-const sectionClass = "bg-white rounded-xl p-6 shadow-sm border border-gray-100";
-const subheadingClass = "text-2xl font-semibold mb-6 text-gray-800";
-const buttonGroupClass = "grid grid-cols-2 gap-6";
+const inputClass = 
+  "w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all duration-200 outline-none text-sm";
+
+const labelClass = "block text-gray-600 font-medium text-sm mb-2";
+
+const sectionClass = "bg-white rounded-xl p-6 border border-gray-100";
+
+const subheadingClass = "text-xl font-semibold mb-6 text-gray-800";
+
+const buttonGroupClass = "grid grid-cols-2 gap-4";
+
 const stepContainerClass = "min-h-screen bg-gray-50 py-12";
-const formContainerClass = "max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8";
-const titleClass = "text-3xl font-bold mb-8 text-center bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent";
-const errorClass = "bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg";
+
+const formContainerClass = "max-w-2xl mx-auto bg-white rounded-2xl border border-gray-200 p-8";
+
+const titleClass = "text-2xl font-semibold mb-8 text-center text-gray-900";
+
+const errorClass = "bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-lg text-sm text-red-700";
 
 // Примеры массивов для выбора
 const RENT_SHORT = ["Квартира", "Комната", "Хавли/Дом", "Спальное место"];
@@ -144,12 +155,29 @@ interface DecodedToken {
   exp: number;
 }
 
+interface StepStatus {
+  isCompleted: boolean;
+  isActive: boolean;
+  error?: string;
+}
+
 export default function CreatePropertyPage() {
   const router = useRouter();
-  const [step, setStep] = useState<number>(1);
   const [formData, setFormData] = useState<PropertyFormData>(initialPropertyFormData);
   const [error, setError] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
+  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({
+    1: { isCompleted: false, isActive: true },
+    2: { isCompleted: false, isActive: false },
+    3: { isCompleted: false, isActive: false },
+    4: { isCompleted: false, isActive: false },
+    5: { isCompleted: false, isActive: false },
+    6: { isCompleted: false, isActive: false },
+    7: { isCompleted: false, isActive: false },
+    8: { isCompleted: false, isActive: false },
+    9: { isCompleted: false, isActive: false },
+    10: { isCompleted: false, isActive: false }
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -173,54 +201,157 @@ export default function CreatePropertyPage() {
     }
   }, [router]);
 
-  const nextStep = () => {
-    if (step === 4 && (!formData.address || !formData.apartmentNumber)) {
-      setError("Пожалуйста, заполните адрес и номер квартиры");
-      return;
+  const validateStep = (stepNumber: number): boolean => {
+    switch (stepNumber) {
+      case 1:
+        return !!formData.deal_type;
+      case 2:
+        return formData.deal_type === "Продажа" || !!formData.rent_duration;
+      case 3:
+        return !!formData.main_category;
+      case 4:
+        return !!formData.sub_category && !!formData.address && !!formData.apartmentNumber;
+      case 5:
+        return !!formData.rooms && !!formData.area && !!formData.floor && !!formData.totalFloors;
+      case 6:
+        return formData.photos.length > 0;
+      case 7:
+        return !!formData.propertyCondition && !!formData.renovation;
+      case 8:
+        return true; // Опциональные характеристики
+      case 9:
+        return !!formData.title && !!formData.description;
+      case 10:
+        const hasRequiredFields = !!formData.price && !!formData.landlordContact;
+        const hasContactMethod = formData.contactMethod && formData.contactMethod.length > 0;
+        
+        if (formData.deal_type === "Аренда") {
+          return hasRequiredFields && !!formData.prepayment && hasContactMethod;
+        }
+        return hasRequiredFields && hasContactMethod;
+      default:
+        return false;
     }
-    if (step === 5 && !formData.rooms) {
-      setError("Пожалуйста, выберите количество комнат");
-      return;
-    }
-    if (step === 6 && formData.photos.length === 0) {
-      setError("Пожалуйста, добавьте хотя бы одну фотографию");
-      return;
-    }
-    if (step === 9 && (!formData.title || !formData.description)) {
-      setError("Пожалуйста, заполните заголовок и описание");
-      return;
-    }
-    if (
-      step === 10 &&
-      (!formData.price || !formData.whoRents || !formData.landlordContact)
-    ) {
-      setError("Пожалуйста, укажите цену, кто сдает и контакты арендодателя");
-      return;
-    }
-    setError("");
-    setStep((prev) => (prev < 10 ? prev + 1 : prev));
   };
 
-  const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
+  const updateStepStatus = (stepNumber: number) => {
+    const isCompleted = validateStep(stepNumber);
+    
+    setStepStatuses(prev => {
+      const newStatuses = { ...prev };
+      
+      // Обновляем статус текущего шага
+      newStatuses[stepNumber] = {
+        ...newStatuses[stepNumber],
+        isCompleted,
+        isActive: true
+      };
+      
+      // Если текущий шаг завершен, активируем следующий шаг
+      if (isCompleted && stepNumber < 10) {
+        newStatuses[stepNumber + 1] = {
+          ...newStatuses[stepNumber + 1],
+          isActive: true
+        };
+      }
+
+      // Проверяем и активируем все шаги, которые уже заполнены
+      for (let i = 1; i <= 10; i++) {
+        const stepIsCompleted = validateStep(i);
+        newStatuses[i] = {
+          ...newStatuses[i],
+          isCompleted: stepIsCompleted,
+          isActive: i <= stepNumber + 1 || stepIsCompleted
+        };
+      }
+      
+      return newStatuses;
+    });
+  };
+
+  const handleStepClick = (stepNumber: number) => {
+    setStepStatuses(prev => {
+      const newStatuses = { ...prev };
+      
+      // Активируем выбранный шаг
+      newStatuses[stepNumber] = {
+        ...newStatuses[stepNumber],
+        isActive: true
+      };
+
+      // Проверяем все предыдущие шаги
+      for (let i = 1; i <= stepNumber; i++) {
+        const isStepCompleted = validateStep(i);
+        newStatuses[i] = {
+          ...newStatuses[i],
+          isCompleted: isStepCompleted,
+          isActive: true
+        };
+      }
+
+      // Если все предыдущие шаги заполнены, активируем следующий
+      if (stepNumber < 10 && validateStep(stepNumber)) {
+        newStatuses[stepNumber + 1] = {
+          ...newStatuses[stepNumber + 1],
+          isActive: true
+        };
+      }
+
+      return newStatuses;
+    });
+  };
+
+  const StepHeader = ({ number, title }: { number: number; title: string }) => {
+    const status = stepStatuses[number];
+    return (
+      <div
+        className={`flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+          status.isActive ? 'bg-white' : 'bg-gray-50'
+        } ${status.isCompleted ? 'border-l-2 border-gray-900' : ''}`}
+        onClick={() => handleStepClick(number)}
+      >
+        <div className="flex items-center gap-4">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+            status.isCompleted ? 'bg-gray-900 text-white' : 
+            status.isActive ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {status.isCompleted ? <FaCheck className="w-3 h-3" /> : number}
+          </div>
+          <span className={`font-medium text-sm ${status.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
+            {title}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {status.error && (
+            <FaExclamationCircle className="text-red-500 w-4 h-4" />
+          )}
+          {status.isActive ? 
+            <FaChevronUp className="w-3 h-3 text-gray-400" /> : 
+            <FaChevronDown className="w-3 h-3 text-gray-400" />
+          }
+        </div>
+      </div>
+    );
+  };
 
   const handleDealSelect = (deal: "Аренда" | "Продажа") => {
     setFormData((prev) => ({ ...prev, deal_type: deal }));
-    nextStep();
+    updateStepStatus(1);
   };
 
   const handleRentDurationSelect = (duration: "Долгосрочная" | "Посуточная") => {
     setFormData((prev) => ({ ...prev, rent_duration: duration }));
-    nextStep();
+    updateStepStatus(2);
   };
 
   const handleMainCategorySelect = (cat: "Жилая" | "Коммерческая") => {
     setFormData((prev) => ({ ...prev, main_category: cat }));
-    nextStep();
+    updateStepStatus(3);
   };
 
   const handleSubCategorySelect = (subCat: string) => {
     setFormData((prev) => ({ ...prev, sub_category: subCat }));
-    setStep(4);
+    updateStepStatus(4);
   };
 
   const handleInputChange = (
@@ -246,19 +377,28 @@ export default function CreatePropertyPage() {
           ? Number(value)
           : value,
     }));
+
+    // Автоматически проверяем и обновляем статус шага при изменении полей
+    if (["title", "description"].includes(name)) {
+      setTimeout(() => updateStepStatus(9), 0);
+    } else if (["price", "whoRents", "landlordContact", "prepayment", "deposit"].includes(name)) {
+      setTimeout(() => updateStepStatus(10), 0);
+    }
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFiles(e.target.files);
       setFormData((prev) => ({ ...prev, photos: Array.from(e.target.files ?? []) }));
+      // Сразу вызываем updateStepStatus после загрузки файлов
+      setTimeout(() => updateStepStatus(6), 0);
     }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.address || !formData.apartmentNumber || !formData.rooms || !formData.owner_id) {
-      setError("Пожалуйста, заполните все обязательные поля: адрес, номер квартиры, количество комнат и owner_id");
+      setError("Пожалуйста, заполните все обязательные поля");
       return;
     }
     try {
@@ -288,7 +428,6 @@ export default function CreatePropertyPage() {
         prepayment: formData.prepayment,
         deposit: formData.deposit,
         living_conditions: Array.isArray(formData.livingConditions) ? formData.livingConditions : [],
-        who_rents: formData.whoRents,
         landlord_contact: formData.landlordContact,
         contact_method: Array.isArray(formData.contactMethod) ? formData.contactMethod : [],
         furniture: Array.isArray(formData.furniture) ? formData.furniture : [],
@@ -357,818 +496,592 @@ export default function CreatePropertyPage() {
     }
   };
 
-  const renderStepContent = () => {
-    if (step <= 3) {
-      return (
-        <div className={stepContainerClass}>
-          <div className={formContainerClass}>
-            <h1 className={titleClass}>Создать объявление</h1>
-            {error && (
-              <div className={errorClass}>
-                <p className="text-red-700">{error}</p>
-              </div>
-            )}
-            {step === 1 && (
-              <div className="space-y-6">
-                <h2 className={subheadingClass}>Тип сделки</h2>
-                <div className={buttonGroupClass}>
-                  <button
-                    type="button"
-                    onClick={() => handleDealSelect("Аренда")}
-                    className={`w-full ${formData.deal_type === "Аренда" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Аренда
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDealSelect("Продажа")}
-                    className={`w-full ${formData.deal_type === "Продажа" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Продажа
-                  </button>
-                </div>
-              </div>
-            )}
-            {step === 2 && formData.deal_type === "Аренда" && (
-              <div className="space-y-6">
-                <h2 className={subheadingClass}>Тип аренды</h2>
-                <div className={buttonGroupClass}>
-                  <button
-                    type="button"
-                    onClick={() => handleRentDurationSelect("Долгосрочная")}
-                    className={`w-full ${formData.rent_duration === "Долгосрочная" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Долгосрочная
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRentDurationSelect("Посуточная")}
-                    className={`w-full ${formData.rent_duration === "Посуточная" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Посуточная
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="mt-6 text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Назад
-                </button>
-              </div>
-            )}
-            {step === 2 && formData.deal_type === "Продажа" && (
-              <div className="space-y-6">
-                <h2 className={subheadingClass}>Выберите категорию</h2>
-                <div className={buttonGroupClass}>
-                  <button
-                    type="button"
-                    onClick={() => handleMainCategorySelect("Жилая")}
-                    className={`w-full ${formData.main_category === "Жилая" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Жилая
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMainCategorySelect("Коммерческая")}
-                    className={`w-full ${formData.main_category === "Коммерческая" ? activeButtonClass : baseButtonClass}`}
-                  >
-                    Коммерческая
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="mt-6 text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Назад
-                </button>
-              </div>
-            )}
-            {step === 3 && (
-              <div className="space-y-6">
-                <h2 className={subheadingClass}>Выберите тип</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {(formData.deal_type === "Аренда"
-                    ? formData.rent_duration === "Долгосрочная"
-                      ? RENT_RESIDENTIAL_LONG
-                      : RENT_SHORT
-                    : formData.main_category === "Жилая"
-                    ? SALE_LIVING
-                    : SALE_COMMERCIAL
-                  ).map((item) => (
-                    <button
-                      type="button"
-                      key={item}
-                      onClick={() => handleSubCategorySelect(item)}
-                      className={`w-full ${formData.sub_category === item ? activeButtonClass : baseButtonClass} text-sm`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="mt-6 text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Назад
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
+  const handleRoomSelect = (rooms: string) => {
+    setFormData(prev => ({ ...prev, rooms }));
+    updateStepStatus(5);
+  };
 
-    return (
-      <div className={stepContainerClass}>
-        <div className={formContainerClass}>
-          <h1 className={titleClass}>Создать объявление</h1>
-          {error && (
-            <div className={errorClass}>
-              <p className="text-red-700">{error}</p>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {renderDetailStep()}
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Назад
-              </button>
-              {step < 10 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className={`${baseButtonClass} flex items-center gap-2`}
+  const handlePropertyConditionSelect = (condition: "Вторичка" | "Новостройка") => {
+    setFormData(prev => ({ ...prev, propertyCondition: condition }));
+    updateStepStatus(7);
+  };
+
+  const handleRenovationSelect = (type: PropertyFormData["renovation"]) => {
+    setFormData(prev => ({ ...prev, renovation: type }));
+    updateStepStatus(7);
+  };
+
+  const handleBathroomSelect = (type: "Разделенный" | "Совмещенный") => {
+    setFormData(prev => ({ ...prev, bathroom: type }));
+    updateStepStatus(8);
+  };
+
+  const handleBalconySelect = (hasBalcony: boolean) => {
+    setFormData(prev => ({ ...prev, hasBalcony }));
+    updateStepStatus(8);
+  };
+
+  const handleWhoRentsSelect = (who: "Собственник" | "Риелтор") => {
+    setFormData(prev => ({ ...prev, whoRents: who }));
+    updateStepStatus(10);
+  };
+
+  const handlePrepaymentSelect = (prepayment: string) => {
+    setFormData(prev => ({ ...prev, prepayment }));
+    updateStepStatus(10);
+  };
+
+  const handleContactMethodToggle = (method: string) => {
+    setFormData(prev => {
+      const currentMethods = prev.contactMethod || [];
+      const newMethods = currentMethods.includes(method)
+        ? currentMethods.filter(m => m !== method)
+        : [...currentMethods, method];
+      return { ...prev, contactMethod: newMethods };
+    });
+    updateStepStatus(10);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className={titleClass}>Создание объявления</h1>
+        
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* Шаг 1: Тип сделки */}
+          <div className="border-b">
+            <StepHeader number={1} title="Тип сделки" />
+            <AnimatePresence>
+              {stepStatuses[1].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
                 >
-                  Далее
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              ) : (
-                <button type="submit" className={`${baseButtonClass} flex items-center gap-2`}>
-                  Создать объявление
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
+                  <div className={buttonGroupClass}>
+                    <button
+                      className={formData.deal_type === "Аренда" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleDealSelect("Аренда");
+                        updateStepStatus(1);
+                      }}
+                    >
+                      Аренда
+                    </button>
+                    <button
+                      className={formData.deal_type === "Продажа" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleDealSelect("Продажа");
+                        updateStepStatus(1);
+                      }}
+                    >
+                      Продажа
+                    </button>
+                  </div>
+                </motion.div>
               )}
-            </div>
-          </form>
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 2: Срок аренды */}
+          <div className="border-b">
+            <StepHeader number={2} title="Срок аренды" />
+            <AnimatePresence>
+              {stepStatuses[2].isActive && formData.deal_type === "Аренда" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className={buttonGroupClass}>
+                    <button
+                      className={formData.rent_duration === "Долгосрочная" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleRentDurationSelect("Долгосрочная");
+                        updateStepStatus(2);
+                      }}
+                    >
+                      Долгосрочная
+                    </button>
+                    <button
+                      className={formData.rent_duration === "Посуточная" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleRentDurationSelect("Посуточная");
+                        updateStepStatus(2);
+                      }}
+                    >
+                      Посуточная
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 3: Категория недвижимости */}
+          <div className="border-b">
+            <StepHeader number={3} title="Категория недвижимости" />
+            <AnimatePresence>
+              {stepStatuses[3].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className={buttonGroupClass}>
+                    <button
+                      className={formData.main_category === "Жилая" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleMainCategorySelect("Жилая");
+                        updateStepStatus(3);
+                      }}
+                    >
+                      Жилая
+                    </button>
+                    <button
+                      className={formData.main_category === "Коммерческая" ? activeButtonClass : baseButtonClass}
+                      onClick={() => {
+                        handleMainCategorySelect("Коммерческая");
+                        updateStepStatus(3);
+                      }}
+                    >
+                      Коммерческая
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 4: Подкатегория и адрес */}
+          <div className="border-b">
+            <StepHeader number={4} title="Тип недвижимости и адрес" />
+            <AnimatePresence>
+              {stepStatuses[4].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="mb-6">
+                    <label className={labelClass}>Тип недвижимости</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {(formData.deal_type === "Продажа"
+                        ? (formData.main_category === "Жилая" ? SALE_LIVING : SALE_COMMERCIAL)
+                        : formData.rent_duration === "Посуточная"
+                        ? RENT_SHORT
+                        : formData.main_category === "Жилая"
+                        ? RENT_RESIDENTIAL_LONG
+                        : RENT_COMMERCIAL_LONG
+                      ).map((category: string) => (
+                        <button
+                          key={category}
+                          className={formData.sub_category === category ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleSubCategorySelect(category)}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className={labelClass}>Адрес</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        placeholder="Введите адрес"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Номер квартиры/помещения</label>
+                      <input
+                        type="text"
+                        name="apartmentNumber"
+                        value={formData.apartmentNumber}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        placeholder="Введите номер"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 5: Основные характеристики */}
+          <div className="border-b">
+            <StepHeader number={5} title="Основные характеристики" />
+            <AnimatePresence>
+              {stepStatuses[5].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Количество комнат</label>
+                      <div className="grid grid-cols-4 gap-4">
+                        {["Студия", "1", "2", "3", "4", "5+", "Свободная планировка"].map((room) => (
+                          <button
+                            key={room}
+                            className={formData.rooms === room ? activeButtonClass : baseButtonClass}
+                            onClick={() => handleRoomSelect(room)}
+                          >
+                            {room}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className={labelClass}>Площадь (м²)</label>
+                        <input
+                          type="number"
+                          name="area"
+                          value={formData.area}
+                          onChange={handleInputChange}
+                          className={inputClass}
+                          min="1"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Этаж</label>
+                        <input
+                          type="number"
+                          name="floor"
+                          value={formData.floor}
+                          onChange={handleInputChange}
+                          className={inputClass}
+                          min="1"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Всего этажей</label>
+                        <input
+                          type="number"
+                          name="totalFloors"
+                          value={formData.totalFloors}
+                          onChange={handleInputChange}
+                          className={inputClass}
+                          min="1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 6: Фотографии */}
+          <div className="border-b">
+            <StepHeader number={6} title="Фотографии" />
+            <AnimatePresence>
+              {stepStatuses[6].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-4">
+                    <label className={labelClass}>Загрузите фотографии объекта</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="w-full"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Можно загрузить до 30 фотографий. Форматы: JPG, PNG. Максимальный размер: 10MB
+                    </p>
+                    {formData.photos.length > 0 && (
+                      <div className="grid grid-cols-3 gap-4">
+                        {Array.from(formData.photos).map((photo, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={URL.createObjectURL(photo)}
+                              alt={`Фото ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 7: Состояние */}
+          <div className="border-b">
+            <StepHeader number={7} title="Состояние" />
+            <AnimatePresence>
+              {stepStatuses[7].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Состояние объекта</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          className={formData.propertyCondition === "Вторичка" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handlePropertyConditionSelect("Вторичка")}
+                        >
+                          Вторичка
+                        </button>
+                        <button
+                          className={formData.propertyCondition === "Новостройка" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handlePropertyConditionSelect("Новостройка")}
+                        >
+                          Новостройка
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Ремонт</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {["Без ремонта", "Коробка", "Косметический", "Евро", "Дизайнерская"].map((type) => (
+                          <button
+                            key={type}
+                            className={formData.renovation === type ? activeButtonClass : baseButtonClass}
+                            onClick={() => handleRenovationSelect(type as PropertyFormData["renovation"])}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 8: Дополнительные характеристики */}
+          <div className="border-b">
+            <StepHeader number={8} title="Дополнительные характеристики" />
+            <AnimatePresence>
+              {stepStatuses[8].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Санузел</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          className={formData.bathroom === "Разделенный" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleBathroomSelect("Разделенный")}
+                        >
+                          Разделенный
+                        </button>
+                        <button
+                          className={formData.bathroom === "Совмещенный" ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleBathroomSelect("Совмещенный")}
+                        >
+                          Совмещенный
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Балкон/лоджия</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          className={formData.hasBalcony ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleBalconySelect(true)}
+                        >
+                          Есть
+                        </button>
+                        <button
+                          className={!formData.hasBalcony ? activeButtonClass : baseButtonClass}
+                          onClick={() => handleBalconySelect(false)}
+                        >
+                          Нет
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 9: Описание */}
+          <div className="border-b">
+            <StepHeader number={9} title="Описание объявления" />
+            <AnimatePresence>
+              {stepStatuses[9].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Заголовок объявления</label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        placeholder="Например: Уютная квартира в центре города"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Описание</label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        className={`${inputClass} h-32`}
+                        placeholder="Опишите все преимущества вашего объекта"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Шаг 10: Условия и контакты */}
+          <div className="border-b">
+            <StepHeader number={10} title="Условия и контакты" />
+            <AnimatePresence>
+              {stepStatuses[10].isActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="p-6"
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Цена</label>
+                      <input
+                        type="number"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        min="0"
+                        placeholder="Введите цену"
+                      />
+                    </div>
+                    {formData.deal_type === "Аренда" && (
+                      <>
+                        <div>
+                          <label className={labelClass}>Предоплата</label>
+                          <div className="grid grid-cols-2 gap-4">
+                            {[
+                              "нет",
+                              "за 1 месяц",
+                              "за 2 месяца",
+                              "за 3 месяца",
+                              "за 4+ месяца"
+                            ].map((option) => (
+                              <button
+                                key={option}
+                                className={formData.prepayment === option ? activeButtonClass : baseButtonClass}
+                                onClick={() => handlePrepaymentSelect(option)}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelClass}>Депозит</label>
+                          <input
+                            type="number"
+                            name="deposit"
+                            value={formData.deposit}
+                            onChange={handleInputChange}
+                            className={inputClass}
+                            min="0"
+                            placeholder="Сумма депозита"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <label className={labelClass}>Контактный телефон</label>
+                      <input
+                        type="tel"
+                        name="landlordContact"
+                        value={formData.landlordContact}
+                        onChange={handleInputChange}
+                        className={inputClass}
+                        placeholder="+7 (XXX) XXX-XX-XX"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Способ связи</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {["Звонки", "Чат"].map((method) => (
+                          <button
+                            key={method}
+                            className={`${
+                              formData.contactMethod?.includes(method)
+                                ? activeButtonClass
+                                : baseButtonClass
+                            } relative`}
+                            onClick={() => handleContactMethodToggle(method)}
+                          >
+                            {method}
+                            {formData.contactMethod?.includes(method) && (
+                              <span className="absolute top-2 right-2">
+                                <FaCheck className="w-4 h-4" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Кнопка отправки формы */}
+          <div className="p-6 bg-gray-50 border-t border-gray-100">
+            <button
+              className={`w-full px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                Object.values(stepStatuses).every(status => status.isCompleted)
+                  ? "bg-gray-900 text-white hover:bg-gray-800"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
+              onClick={handleSubmit}
+              disabled={!Object.values(stepStatuses).every(status => status.isCompleted)}
+            >
+              Опубликовать объявление
+            </button>
+          </div>
         </div>
       </div>
-    );
-  };
-
-  const renderDetailStep = () => {
-    if (step === 5 && !formData.sub_category) {
-      return <div>Пожалуйста, выберите тип недвижимости на предыдущем шаге.</div>;
-    }
-
-    switch (step - 3) {
-      case 1:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Адрес</h2>
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>Введите адрес:</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Номер квартиры:</label>
-                <input
-                  type="text"
-                  name="apartmentNumber"
-                  value={formData.apartmentNumber}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Параметры квартиры</h2>
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>Количество комнат:</label>
-                <div className={buttonGroupClass}>
-                  {["Студия", "1", "2", "3", "4", "5+", "Свободная планировка"].map((r) => (
-                    <button
-                      type="button"
-                      key={r}
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, rooms: r }))
-                      }
-                      className={`w-full ${
-                        formData.rooms === r ? activeButtonClass : baseButtonClass
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Площадь (м²):</label>
-                <input
-                  type="number"
-                  name="area"
-                  value={formData.area}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Высота потолков (м):</label>
-                <input
-                  type="number"
-                  name="ceilingHeight"
-                  value={formData.ceilingHeight}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Этаж:</label>
-                <input
-                  type="number"
-                  name="floor"
-                  value={formData.floor}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Всего этажей:</label>
-                <input
-                  type="number"
-                  name="totalFloors"
-                  value={formData.totalFloors}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </div>
-            </div>
-          </div>
-        );
-      case 3:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Фотографии</h2>
-            <input
-              type="file"
-              multiple
-              onChange={handleFileChange}
-              className={inputClass}
-            />
-            {formData.photos.length > 0 && (
-              <ul className="mt-2">
-                {formData.photos.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        );
-      case 4:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Особенности квартиры</h2>
-                <div>
-                  <label className={labelClass}>Год постройки дома:</label>
-                     <input
-                      type="number"
-                      name="buildYear"
-                      value={formData.buildYear}
-                      onChange={handleInputChange}
-                      min="1900"
-                      max={new Date().getFullYear()}
-                      className={inputClass}
-                      placeholder="Например: 2010"
-                      />
-                 </div>
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>Тип жилья:</label>
-                <div className={buttonGroupClass}>
-                  {["Вторичка", "Новостройка"].map((t) => (
-                    <button
-                      type="button"
-                      key={t}
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          propertyCondition: t as "Вторичка" | "Новостройка" | "",
-                        }))
-                      }
-                      className={`w-full ${
-                        formData.propertyCondition === t ? activeButtonClass : baseButtonClass
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Есть балкон:</label>
-                <div className="mt-4">
-                  <label className="mr-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasBalcony}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          hasBalcony: e.target.checked,
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Вид из окна:</label>
-                <div className="mt-4">
-                  {["Во двор", "На улицу"].map((view) => {
-                    const selected = formData.windowView.includes(view);
-                    return (
-                      <label key={view} className="mr-4">
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => {
-                            const newViews = selected
-                              ? formData.windowView.filter((v) => v !== view)
-                              : [...formData.windowView, view];
-                            setFormData((prev) => ({
-                              ...prev,
-                              windowView: newViews,
-                            }));
-                          }}
-                        />
-                        {view}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Санузел:</label>
-                <div className="mt-4">
-                  <div className={buttonGroupClass}>
-                    {["Разделенный", "Совмещенный"].map((b) => (
-                      <button
-                        type="button"
-                        key={b}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            bathroom: b as "Разделенный" | "Совмещенный" | "",
-                          }))
-                        }
-                        className={`w-full ${
-                          formData.bathroom === b ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {b}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Ванная комната:</label>
-                <div className="mt-4">
-                  <div className={buttonGroupClass}>
-                    {["Ванна", "Душевая кабина"].map((b) => (
-                      <button
-                        type="button"
-                        key={b}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            bathType: b as "Ванна" | "Душевая кабина" | "",
-                          }))
-                        }
-                        className={`w-full ${
-                          formData.bathType === b ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {b}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Отопление:</label>
-                <div className="mt-4">
-                  <div className={buttonGroupClass}>
-                    {["Да", "Нет"].map((opt) => (
-                      <button
-                        type="button"
-                        key={opt}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            heating: opt as "Да" | "Нет" | "",
-                          }))
-                        }
-                        className={`w-full ${
-                          formData.heating === opt ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Ремонт:</label>
-                <div className="mt-4">
-                  <div className={buttonGroupClass}>
-                    {[
-                      "Без ремонта",
-                      "Коробка",
-                      "Косметический",
-                      "Дизайнерская",
-                      "Евро",
-                    ].map((r) => (
-                      <button
-                        type="button"
-                        key={r}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            renovation: r as
-                              | "Без ремонта"
-                              | "Коробка"
-                              | "Косметический"
-                              | "Дизайнерская"
-                              | "Евро"
-                              | "",
-                          }))
-                        }
-                        className={`w-full ${
-                          formData.renovation === r ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Лифты - Пассажирский:</label>
-                <input
-                  type="number"
-                  name="liftsPassenger"
-                  value={formData.liftsPassenger}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      liftsPassenger: Number(e.target.value),
-                    }))
-                  }
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Лифты - Грузовой:</label>
-                <input
-                  type="number"
-                  name="liftsFreight"
-                  value={formData.liftsFreight}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      liftsFreight: Number(e.target.value),
-                    }))
-                  }
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Парковка:</label>
-                <div className="mt-4">
-                  {["Подземная", "Многоуровневая", "Наземная"].map((p) => {
-                    const selected = formData.parking.includes(p);
-                    return (
-                      <label key={p} className="mr-4">
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => {
-                            const newParking = selected
-                              ? formData.parking.filter((v) => v !== p)
-                              : [...formData.parking, p];
-                            setFormData((prev) => ({
-                              ...prev,
-                              parking: newParking,
-                            }));
-                          }}
-                        />
-                        {p}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      case 5:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>В квартире есть</h2>
-            <div className="space-y-8">
-              {/* Мебель */}
-              <div>
-                <label className={labelClass}>Мебель</label>
-                <div className={buttonGroupClass}>
-                  {["Без мебели", "В комнатах", "На кухне"].map((option) => {
-                    const isSelected = formData.furniture.includes(option);
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          const newFurniture = isSelected
-                            ? formData.furniture.filter(f => f !== option)
-                            : [...formData.furniture, option];
-                          setFormData(prev => ({ ...prev, furniture: newFurniture }));
-                        }}
-                        className={`w-full ${
-                          isSelected ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Техника */}
-              <div>
-                <label className={labelClass}>Техника</label>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    "Кондиционер",
-                    "Холодильник",
-                    "Телевизор",
-                    "Посудомоечная машина",
-                    "Стиральная машина",
-                    "Микроволновка"
-                  ].map((appliance) => {
-                    const isSelected = formData.appliances.includes(appliance);
-                    return (
-                      <button
-                        key={appliance}
-                        type="button"
-                        onClick={() => {
-                          const newAppliances = isSelected
-                            ? formData.appliances.filter(a => a !== appliance)
-                            : [...formData.appliances, appliance];
-                          setFormData(prev => ({ ...prev, appliances: newAppliances }));
-                        }}
-                        className={`w-full ${
-                          isSelected ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {appliance}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Связь */}
-              <div>
-                <label className={labelClass}>Связь</label>
-                <div className={buttonGroupClass}>
-                  {["Интернет", "Телефон"].map((option) => {
-                    const isSelected = formData.connectivity.includes(option);
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          const newConnectivity = isSelected
-                            ? formData.connectivity.filter(c => c !== option)
-                            : [...formData.connectivity, option];
-                          setFormData(prev => ({ ...prev, connectivity: newConnectivity }));
-                        }}
-                        className={`w-full ${
-                          isSelected ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      case 6:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Описание квартиры</h2>
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>Заголовок:</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Описание:</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  rows={4}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        );
-      case 7:
-        return (
-          <div className={sectionClass}>
-            <h2 className={subheadingClass}>Цена и условия аренды</h2>
-            <div className="space-y-6">
-              <div>
-                <label className={labelClass}>Аренда в месяц:</label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Предоплата:</label>
-                <div className="mt-4">
-                  {["нет", "За 1 месяц", "За 2 месяца", "За 3 месяца", "За 4+ месяцев"].map((pp) => (
-                    <button
-                      type="button"
-                      key={pp}
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, prepayment: pp }))
-                      }
-                      className={`w-full ${
-                        formData.prepayment === pp ? activeButtonClass : baseButtonClass
-                      }`}
-                    >
-                      {pp}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Залог:</label>
-                <input
-                  type="number"
-                  name="deposit"
-                  value={formData.deposit}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Условия проживания:</label>
-                <div className="mt-4">
-                  {["Можно с детьми", "Можно с домашними животными"].map((cond) => (
-                    <label key={cond} className="mr-4">
-                      <input
-                        type="checkbox"
-                        checked={formData.livingConditions.includes(cond)}
-                        onChange={() => {
-                          const newConds = formData.livingConditions.includes(cond)
-                            ? formData.livingConditions.filter((c) => c !== cond)
-                            : [...formData.livingConditions, cond];
-                          setFormData((prev) => ({
-                            ...prev,
-                            livingConditions: newConds,
-                          }));
-                        }}
-                      />
-                      {cond}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Кто сдает:</label>
-                <div className="mt-4">
-                  <div className={buttonGroupClass}>
-                    {["Собственник", "Риелтор"].map((ownerType) => (
-                      <button
-                        type="button"
-                        key={ownerType}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            whoRents: ownerType as "Собственник" | "Риелтор" | "",
-                          }))
-                        }
-                        className={`w-full ${
-                          formData.whoRents === ownerType ? activeButtonClass : baseButtonClass
-                        }`}
-                      >
-                        {ownerType}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Контакты арендодателя:</label>
-                <input
-                  type="text"
-                  name="landlordContact"
-                  placeholder="+992774447717"
-                  value={formData.landlordContact}
-                  onChange={handleInputChange}
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Способ связи:</label>
-                <div className="mt-4">
-                  {["Звонки", "Чат"].map((method) => (
-                    <label key={method} className="mr-4">
-                      <input
-                        type="checkbox"
-                        checked={formData.contactMethod.includes(method)}
-                        onChange={() => {
-                          const newMethods = formData.contactMethod.includes(method)
-                            ? formData.contactMethod.filter((m) => m !== method)
-                            : [...formData.contactMethod, method];
-                          setFormData((prev) => ({
-                            ...prev,
-                            contactMethod: newMethods,
-                          }));
-                        }}
-                      />
-                      {method}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      default:
-        return <div>Неизвестный шаг</div>;
-    }
-  };
-
-  return renderStepContent();
+    </div>
+  );
 }
