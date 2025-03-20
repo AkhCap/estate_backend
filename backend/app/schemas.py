@@ -22,7 +22,6 @@ class UserBase(BaseModel):
 # 🔹 Схема регистрации пользователя
 class UserCreate(UserBase):
     password: str
-    role: UserRole = UserRole.PRIVATE
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
@@ -197,6 +196,7 @@ class HistoryCreate(HistoryBase):
 class HistoryOut(HistoryBase):
     id: int
     viewed_at: datetime
+    property: PropertyOut
 
     model_config = {"from_attributes": True}
 

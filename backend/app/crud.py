@@ -10,13 +10,13 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
     return user
 
 
-# Создание нового пользователя с выбором роли
+# Создание нового пользователя
 def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> models.User:
     db_user = models.User(
         email=user.email,
         username=user.username,
         hashed_password=hashed_password,
-        role=user.role,  # Используем значение из UserCreate
+        role="private",  # Устанавливаем значение по умолчанию
         first_name=user.first_name,
         last_name=user.last_name,
         phone=user.phone
@@ -232,4 +232,25 @@ def create_history(db: Session, history: schemas.HistoryCreate, user_id: int):
     return db_history
 
 def get_history_by_user(db: Session, user_id: int):
-    return db.query(models.History).filter(models.History.user_id == user_id).all()
+    # Получаем историю с полной информацией о недвижимости и изображениях
+    history = (
+        db.query(models.History)
+        .join(models.Property)  # Присоединяем таблицу недвижимости
+        .options(
+            joinedload(models.History.property).joinedload(models.Property.images)
+        )
+        .filter(models.History.user_id == user_id)
+        .order_by(models.History.viewed_at.desc())
+        .all()
+    )
+    
+    # Удаляем дубликаты, оставляя только последний просмотр для каждого объекта
+    seen_properties = set()
+    unique_history = []
+    
+    for h in history:
+        if h.property_id not in seen_properties:
+            seen_properties.add(h.property_id)
+            unique_history.append(h)
+    
+    return unique_history

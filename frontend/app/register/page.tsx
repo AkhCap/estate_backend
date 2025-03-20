@@ -3,25 +3,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "../../lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaUser, FaEnvelope, FaLock, FaUserTie, FaChevronDown } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import Link from "next/link";
-
-const roles = [
-  { id: 'private', label: 'Частное лицо', icon: '👤' },
-  { id: 'agent', label: 'Риелтор', icon: '🏢' },
-  { id: 'developer', label: 'Застройщик', icon: '🏗️' }
-];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     username: "",
-    password: "",
-    role: "private"
+    password: ""
   });
   const [error, setError] = useState("");
-  const [isRoleOpen, setIsRoleOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,10 +24,6 @@ export default function RegisterPage() {
       const errorMessage = err.response?.data?.detail || err.message || "Неизвестная ошибка";
       setError("Ошибка регистрации: " + errorMessage);
     }
-  };
-
-  const getCurrentRoleLabel = () => {
-    return roles.find(role => role.id === formData.role)?.label || 'Выберите роль';
   };
 
   return (
@@ -117,51 +105,6 @@ export default function RegisterPage() {
                     placeholder="••••••••"
                     required
                   />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Роль</label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsRoleOpen(!isRoleOpen)}
-                    className="relative w-full pl-10 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-left flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
-                      <FaUserTie className="absolute left-3 h-5 w-5 text-gray-400" />
-                      <span>{getCurrentRoleLabel()}</span>
-                    </div>
-                    <FaChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isRoleOpen ? 'transform rotate-180' : ''}`} />
-                  </button>
-
-                  <AnimatePresence>
-                    {isRoleOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 py-1"
-                      >
-                        {roles.map((role) => (
-                          <motion.button
-                            key={role.id}
-                            type="button"
-                            whileHover={{ backgroundColor: '#F3F4F6' }}
-                            onClick={() => {
-                              setFormData({ ...formData, role: role.id });
-                              setIsRoleOpen(false);
-                            }}
-                            className="w-full px-4 py-2 text-left flex items-center space-x-2 hover:bg-gray-50"
-                          >
-                            <span className="text-xl">{role.icon}</span>
-                            <span>{role.label}</span>
-                          </motion.button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               </div>
 

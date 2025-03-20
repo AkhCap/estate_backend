@@ -93,8 +93,8 @@ export default function PropertiesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Загружаем объявления
-        const propertiesResponse = await axios.get("/properties");
+        // Загружаем объявления используя новый endpoint
+        const propertiesResponse = await axios.get("/properties/list");
         setProperties(propertiesResponse.data);
 
         // Загружаем избранное

@@ -5,6 +5,10 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
 from passlib.context import CryptContext
+from typing import Optional
+from . import crud
+from .database import get_db
+from sqlalchemy.orm import Session
 
 # Загружаем переменные окружения из файла .env
 load_dotenv()

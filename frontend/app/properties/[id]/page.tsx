@@ -184,7 +184,11 @@ export default function PropertyDetailPage() {
       if (!params?.id) return;
       try {
         console.log("Fetching property with ID:", params.id);
-        const propertyResponse = await axios.get(`/properties/${params.id}`);
+        const propertyResponse = await axios.get(`/properties/${params.id}`, {
+          params: {
+            is_detail_view: true
+          }
+        });
         console.log("Property data:", propertyResponse.data);
         setProperty(propertyResponse.data);
         

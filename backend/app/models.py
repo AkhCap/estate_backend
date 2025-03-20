@@ -23,7 +23,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # Это поле будет хранить значения "private", "agent", "developer"
+    role = Column(String, nullable=False, default="private")  # Значение по умолчанию
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     phone = Column(String, nullable=True)

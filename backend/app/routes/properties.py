@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Импортируем Pydantic-схемы
-from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut
+from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut, HistoryCreate
 
 router = APIRouter()
 
@@ -19,14 +19,25 @@ UPLOAD_DIR = "uploads/properties"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-@router.get("/", response_model=List[PropertyOut])
-async def get_properties(db: Session = Depends(get_db)):
+@router.get("/list", response_model=List[PropertyOut])
+async def get_properties_list(db: Session = Depends(get_db)):
+    """
+    Получение списка объявлений без создания записи в истории просмотров
+    """
     try:
         properties = db.query(Property).all()
         return [PropertyOut.model_validate(prop) for prop in properties]
     except Exception as e:
         print(f"Error getting properties: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/", response_model=List[PropertyOut])
+@router.get("", response_model=List[PropertyOut])
+async def get_properties(db: Session = Depends(get_db)):
+    """
+    Для обратной совместимости, перенаправляет на /list
+    """
+    return await get_properties_list(db)
 
 @router.post("/", response_model=PropertyOut)
 async def create_property(
@@ -48,10 +59,26 @@ async def create_property(
     return PropertyOut.model_validate(new_property)
 
 @router.get("/{property_id}", response_model=PropertyOut)
-async def get_property(property_id: int, db: Session = Depends(get_db)):
+async def get_property(
+    property_id: int, 
+    is_detail_view: bool = False,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    """
+    Получение детальной информации об объявлении.
+    Создает запись в истории просмотров только при просмотре детальной страницы.
+    """
     prop = db.query(Property).filter(Property.id == property_id).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
+    
+    # Создаем запись в истории только если это просмотр детальной страницы
+    if is_detail_view:
+        user = crud.get_user_by_email(db, email=current_user)
+        if user:  # Если пользователь авторизован
+            crud.create_history(db, HistoryCreate(property_id=property_id), user.id)
+    
     return PropertyOut.model_validate(prop)
 
 @router.put("/{property_id}", response_model=PropertyOut)

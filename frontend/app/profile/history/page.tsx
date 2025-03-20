@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
-import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaClock, FaTrash, FaRegCalendarAlt, FaSearch } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaClock, FaTrash, FaRegCalendarAlt, FaSearch, FaExclamationTriangle } from "react-icons/fa";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -19,8 +19,14 @@ interface Property {
   rooms: string;
   area: number;
   images: Array<{ id: number; image_url: string }>;
-  viewed_at: string;
   created_at: string;
+}
+
+interface HistoryItem {
+  id: number;
+  property_id: number;
+  viewed_at: string;
+  property: Property;
 }
 
 const container = {
@@ -33,7 +39,7 @@ const container = {
   }
 };
 
-const item = {
+const itemAnimation = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
 };
@@ -57,15 +63,71 @@ const formatDate = (dateString: string) => {
   }
 };
 
+interface ConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}
+
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: ConfirmModalProps) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-2xl p-6 w-full max-w-md m-4 relative z-10"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <FaExclamationTriangle className="text-red-500 w-6 h-6" />
+          <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+        </div>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+          >
+            Удалить
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function HistoryPage() {
   const router = useRouter();
-  const [history, setHistory] = useState<Property[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "price">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    itemId?: number;
+    isClearAll: boolean;
+  }>({
+    isOpen: false,
+    itemId: undefined,
+    isClearAll: false
+  });
 
   const fetchHistory = async (isRetry = false) => {
     try {
@@ -74,7 +136,7 @@ export default function HistoryPage() {
         setIsRetrying(true);
       }
       const response = await axios.get("/users/me/history");
-      setHistory(response.data);
+      setHistory(response.data || []);
       setError("");
     } catch (err: any) {
       console.error("Error fetching history:", err);
@@ -99,6 +161,7 @@ export default function HistoryPage() {
           ? "История просмотров недоступна"
           : err.response?.data?.detail || "Ошибка при загрузке истории просмотров"
       );
+      setHistory([]);
     } finally {
       setLoading(false);
       setIsRetrying(false);
@@ -115,33 +178,35 @@ export default function HistoryPage() {
   };
 
   const clearHistory = async () => {
-    if (window.confirm("Вы уверены, что хотите очистить всю историю просмотров?")) {
-      try {
-        await axios.delete("/users/me/history");
-        setHistory([]);
-      } catch (err: any) {
-        console.error(err);
-      }
+    try {
+      await axios.delete("/users/me/history");
+      setHistory([]);
+    } catch (err: any) {
+      console.error(err);
     }
   };
 
-  const removeFromHistory = async (propertyId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (window.confirm("Удалить это объявление из истории просмотров?")) {
-      try {
-        await axios.delete(`/users/me/history/${propertyId}`);
-        setHistory(history.filter(property => property.id !== propertyId));
-      } catch (err: any) {
-        console.error(err);
-      }
+  const removeFromHistory = async (historyId: number) => {
+    try {
+      await axios.delete(`/users/me/history/${historyId}`);
+      setHistory(history.filter(item => item.id !== historyId));
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleConfirmAction = () => {
+    if (confirmModal.isClearAll) {
+      clearHistory();
+    } else if (confirmModal.itemId !== undefined) {
+      removeFromHistory(confirmModal.itemId);
     }
   };
 
   const filteredAndSortedHistory = history
-    .filter(property => 
-      property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.address.toLowerCase().includes(searchQuery.toLowerCase())
+    .filter(item => 
+      (item.property?.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (item.property?.address?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
       if (sortBy === "date") {
@@ -150,8 +215,8 @@ export default function HistoryPage() {
           : new Date(a.viewed_at).getTime() - new Date(b.viewed_at).getTime();
       } else {
         return sortOrder === "desc" 
-          ? b.price - a.price
-          : a.price - b.price;
+          ? (b.property?.price || 0) - (a.property?.price || 0)
+          : (a.property?.price || 0) - (b.property?.price || 0);
       }
     });
 
@@ -207,6 +272,18 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-8">
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, itemId: undefined, isClearAll: false })}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.isClearAll ? "Очистить историю" : "Удалить запись"}
+        message={
+          confirmModal.isClearAll
+            ? "Вы уверены, что хотите очистить всю историю просмотров? Это действие нельзя отменить."
+            : "Вы уверены, что хотите удалить эту запись из истории просмотров?"
+        }
+      />
+
       {/* Заголовок и управление */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -219,7 +296,7 @@ export default function HistoryPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={clearHistory}
+            onClick={() => setConfirmModal({ isOpen: true, isClearAll: true })}
             className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
           >
             <FaTrash className="w-4 h-4" />
@@ -272,19 +349,21 @@ export default function HistoryPage() {
             <p className="text-gray-600">По вашему запросу ничего не найдено</p>
           </div>
         ) : (
-          filteredAndSortedHistory.map((property) => (
+          filteredAndSortedHistory.map((item) => (
             <motion.div
-              key={property.id}
-              variants={item}
+              key={`${item.property.id}-${item.viewed_at}`}
+              variants={itemAnimation}
               className="group relative"
             >
-              <Link href={`/properties/${property.id}`}>
+              <Link href={`/properties/${item.property.id}`}>
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   {/* Изображение */}
                   <div className="relative aspect-[4/3]">
                     <img
-                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
-                      alt={property.title}
+                      src={item.property.images && item.property.images.length > 0 
+                        ? `${BASE_URL}/uploads/properties/${item.property.images[0].image_url}` 
+                        : "/no-image.jpg"}
+                      alt={item.property.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -292,14 +371,18 @@ export default function HistoryPage() {
                       }}
                     />
                     <button
-                      onClick={(e) => removeFromHistory(property.id, e)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmModal({ isOpen: true, itemId: item.id, isClearAll: false });
+                      }}
                       className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 hover:bg-white"
                     >
                       <FaTrash className="text-red-500" />
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
                       <p className="text-white text-2xl font-bold">
-                        {formatPrice(property.price)}
+                        {formatPrice(item.property.price)}
                       </p>
                     </div>
                   </div>
@@ -307,30 +390,30 @@ export default function HistoryPage() {
                   {/* Информация */}
                   <div className="p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
-                      {property.title}
+                      {item.property.title}
                     </h3>
                     <div className="flex items-center text-gray-600 mb-4">
                       <FaMapMarkerAlt className="mr-2 flex-shrink-0" />
-                      <p className="text-sm line-clamp-1">{property.address}</p>
+                      <p className="text-sm line-clamp-1">{item.property.address}</p>
                     </div>
                     <div className="flex items-center gap-4 text-gray-600 mb-3">
                       <div className="flex items-center gap-1">
                         <FaBed className="w-4 h-4" />
-                        <span>{property.rooms} комнат</span>
+                        <span>{item.property.rooms} комнат</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <FaRulerCombined className="w-4 h-4" />
-                        <span>Площадь: {property.area} м²</span>
+                        <span>Площадь: {item.property.area} м²</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 text-sm text-gray-500">
                       <div className="flex items-center">
                         <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-                        <span>Создано: {formatDate(property.created_at)}</span>
+                        <span>Создано: {formatDate(item.property.created_at)}</span>
                       </div>
                       <div className="flex items-center">
                         <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-                        <span>Просмотрено: {formatDate(property.viewed_at)}</span>
+                        <span>Просмотрено: {formatDate(item.viewed_at)}</span>
                       </div>
                     </div>
                   </div>

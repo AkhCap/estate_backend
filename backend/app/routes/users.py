@@ -173,3 +173,36 @@ def remove_favorite(
         raise HTTPException(status_code=404, detail="Объявление не найдено в избранном")
     crud.remove_from_favorites(db, user_id=user.id, property_id=property_id)
     return {"detail": "Объявление удалено из избранного"}
+
+@router.get("/me/history", response_model=List[schemas.HistoryOut])
+def read_user_history(
+    current_user: str = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    history = crud.get_history_by_user(db, user_id=user.id)
+    return [schemas.HistoryOut.model_validate(h) for h in history]
+
+@router.delete("/me/history/{history_id}", summary="Remove item from history")
+def remove_from_history(
+    history_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    history_item = db.query(models.History).filter(
+        models.History.id == history_id,
+        models.History.user_id == user.id
+    ).first()
+    
+    if not history_item:
+        raise HTTPException(status_code=404, detail="Запись не найдена в истории")
+    
+    db.delete(history_item)
+    db.commit()
+    return {"detail": "Запись удалена из истории"}
