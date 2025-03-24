@@ -7,3 +7,26 @@ node_modules/
 uploads/
 static/
 estate_backend.zip
+
+# Python virtual environment
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node modules
+frontend/node_modules/
+frontend/.next/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
