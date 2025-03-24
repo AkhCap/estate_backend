@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
-import { FaImages } from 'react-icons/fa';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { FaImages, FaTimes } from 'react-icons/fa';
 import Image from 'next/image';
 
 interface ExistingPhoto {
@@ -76,7 +75,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                       onClick={() => onExistingPhotoDelete(photo.id)}
                       className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                     >
-                      <XMarkIcon className="h-5 w-5" />
+                      <FaTimes className="h-5 w-5" />
                     </button>
                   )}
                 </div>
@@ -123,7 +122,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                   onClick={() => onDelete(index)}
                   className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                 >
-                  <XMarkIcon className="h-5 w-5" />
+                  <FaTimes className="h-5 w-5" />
                 </button>
               </div>
             ))}
