@@ -1,8 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Property, PropertyImage
-from app import crud, auth
+from app.models import Property, PropertyImage, PropertyViews
+from app import crud, auth, models
 import shutil
 import os
 from typing import List
@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Импортируем Pydantic-схемы
-from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut, HistoryCreate
+from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut, HistoryCreate, PropertyUpdate
 
 router = APIRouter()
 
@@ -20,26 +20,32 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 @router.get("/list", response_model=List[PropertyOut])
-async def get_properties_list(db: Session = Depends(get_db)):
+async def get_properties_list(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_optional_current_user)
+):
     """
-    Получение списка объявлений без создания записи в истории просмотров.
+    Получение списка объявлений.
     Доступно без аутентификации.
     """
-    try:
-        properties = db.query(Property).all()
-        return [PropertyOut.model_validate(prop) for prop in properties]
-    except Exception as e:
-        print(f"Error getting properties: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/", response_model=List[PropertyOut])
-@router.get("", response_model=List[PropertyOut])
-async def get_properties(db: Session = Depends(get_db)):
-    """
-    Для обратной совместимости, перенаправляет на /list.
-    Доступно без аутентификации.
-    """
-    return await get_properties_list(db)
+    user_id = None
+    if current_user:
+        user = crud.get_user_by_email(db, email=current_user)
+        if user:
+            user_id = user.id
+    
+    properties = db.query(Property).all()
+    for prop in properties:
+        # По умолчанию устанавливаем is_viewed в False
+        prop.is_viewed = False
+        
+        if user_id:
+            # Используем функцию is_property_viewed, которая проверяет:
+            # 1. Пользователь не является владельцем
+            # 2. Есть запись в таблице property_views
+            prop.is_viewed = crud.is_property_viewed(db, user_id, prop.id)
+    
+    return [PropertyOut.model_validate(prop) for prop in properties]
 
 @router.post("/", response_model=PropertyOut)
 async def create_property(
@@ -69,30 +75,73 @@ async def get_property(
 ):
     """
     Получение детальной информации об объявлении.
-    Доступно без аутентификации, но запись в историю создается только для авторизованных пользователей.
+    Доступно без аутентификации, но запись в историю создается только для авторизованных пользователей
+    и только при просмотре детальной страницы (is_detail_view=True).
     """
-    prop = db.query(Property).filter(Property.id == property_id).first()
+    user_id = None
+    if current_user:
+        user = crud.get_user_by_email(db, email=current_user)
+        if user:
+            user_id = user.id
+    
+    prop = crud.get_property(db, property_id, user_id)
     if not prop:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
-    # Создаем запись в истории только если пользователь авторизован
-    if is_detail_view and current_user:
-        user = crud.get_user_by_email(db, email=current_user)
-        if user:  # Если пользователь авторизован
-            crud.create_history(db, HistoryCreate(property_id=property_id), user.id)
+    # Создаем запись в истории и добавляем просмотр только если:
+    # 1. Это просмотр детальной страницы
+    # 2. Пользователь авторизован
+    # 3. Пользователь не является владельцем объявления
+    if is_detail_view and user_id and prop.owner_id != user_id:
+        crud.create_history(db, HistoryCreate(property_id=property_id), user_id)
+        crud.add_property_view(db, user_id, property_id)
     
     return PropertyOut.model_validate(prop)
 
 @router.put("/{property_id}", response_model=PropertyOut)
-async def update_property(property_id: int, property_data: PropertyCreate, db: Session = Depends(get_db)):
-    prop = db.query(Property).filter(Property.id == property_id).first()
-    if not prop:
-        raise HTTPException(status_code=404, detail="Объявление не найдено")
-    for key, value in property_data.model_dump(exclude_unset=True).items():
-        setattr(prop, key, value)
-    db.commit()
-    db.refresh(prop)
-    return PropertyOut.model_validate(prop)
+async def update_property(
+    property_id: int, 
+    property_data: PropertyUpdate, 
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    """
+    Обновление объявления по ID.
+    Требует аутентификации и прав владельца объявления.
+    """
+    try:
+        print(f"Получен запрос на обновление объявления {property_id}")
+        # Получаем текущего пользователя
+        user = crud.get_user_by_email(db, email=current_user)
+        if not user:
+            print(f"Пользователь {current_user} не найден")
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        # Получаем текущее объявление
+        property = crud.get_property(db, property_id)
+        if not property:
+            print(f"Объявление {property_id} не найдено")
+            raise HTTPException(status_code=404, detail="Объявление не найдено")
+
+        # Проверяем права пользователя
+        if property.owner_id != user.id:
+            print(f"Пользователь {user.id} не имеет прав на редактирование объявления {property_id}")
+            raise HTTPException(status_code=403, detail="Нет прав для редактирования этого объявления")
+
+        # Обновляем объявление
+        updated_property = crud.update_property(db, property_id, property_data)
+        if not updated_property:
+            print(f"Не удалось обновить объявление {property_id}")
+            raise HTTPException(status_code=404, detail="Объявление не найдено")
+        
+        print(f"Объявление {property_id} успешно обновлено")
+        return updated_property
+    except HTTPException as he:
+        print(f"HTTP ошибка при обновлении объявления: {he.detail}")
+        raise he
+    except Exception as e:
+        print(f"Неожиданная ошибка при обновлении объявления: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{property_id}")
 async def delete_property(property_id: int, db: Session = Depends(get_db)):
@@ -157,3 +206,60 @@ async def upload_images(
         "property_id": property_id,
         "files": uploaded_files
     }
+
+@router.get("/{property_id}/images", response_model=List[PropertyImageOut])
+async def get_property_images(
+    property_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Получение списка фотографий объявления.
+    Доступно без аутентификации.
+    """
+    images = crud.get_property_images(db, property_id)
+    return [PropertyImageOut.model_validate(img) for img in images]
+
+@router.delete("/{property_id}/images/{image_id}")
+async def delete_property_image(
+    property_id: int,
+    image_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    """
+    Удаление фотографии объявления.
+    Требует аутентификации и прав владельца объявления.
+    """
+    # Проверяем существование объявления
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Объявление не найдено")
+
+    # Проверяем права пользователя
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user or prop.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Нет прав для удаления изображения")
+
+    # Получаем изображение
+    image = db.query(PropertyImage).filter(
+        PropertyImage.id == image_id,
+        PropertyImage.property_id == property_id
+    ).first()
+    
+    if not image:
+        raise HTTPException(status_code=404, detail="Изображение не найдено")
+
+    try:
+        # Удаляем файл
+        file_path = os.path.join(UPLOAD_DIR, image.image_url)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        # Удаляем запись из базы данных
+        db.delete(image)
+        db.commit()
+
+        return {"message": "Изображение успешно удалено"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка при удалении изображения: {str(e)}")

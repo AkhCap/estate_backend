@@ -6,7 +6,7 @@ import Link from "next/link";
 import axios from "../../lib/axios";
 import { formatPrice } from "../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
 // Добавляем базовый URL для изображений
@@ -48,6 +48,7 @@ interface Property {
   owner_id: number;
   images: Image[];
   created_at: string;
+  is_viewed: boolean;
 }
 
 const container = {
@@ -91,18 +92,27 @@ export default function PropertiesPage() {
   const [error, setError] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Загружаем объявления
-        const propertiesResponse = await axios.get("/properties/list");
+        // Загружаем объявления с информацией о просмотрах
+        const propertiesResponse = await axios.get("/properties/list", {
+          params: {
+            include_viewed: true
+          }
+        });
         setProperties(propertiesResponse.data);
 
         try {
-          // Пробуем загрузить избранное только если пользователь авторизован
-          const favoritesResponse = await axios.get('/favorites');
+          // Пробуем загрузить данные пользователя и избранное
+          const [userResponse, favoritesResponse] = await Promise.all([
+            axios.get('/users/me'),
+            axios.get('/favorites')
+          ]);
+          setCurrentUserId(userResponse.data.id);
           const favoritesData = favoritesResponse.data;
           setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
           setIsAuthenticated(true);
@@ -110,6 +120,7 @@ export default function PropertiesPage() {
           // Если получаем 401, значит пользователь не авторизован
           if (err.response?.status === 401) {
             setIsAuthenticated(false);
+            setCurrentUserId(null);
           }
         }
       } catch (err: any) {
@@ -226,7 +237,7 @@ export default function PropertiesPage() {
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           {properties.map((property) => (
             <motion.div
@@ -237,7 +248,7 @@ export default function PropertiesPage() {
               <Link href={`/properties/${property.id}`}>
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
                   {/* Изображение */}
-                  <div className="relative h-64">
+                  <div className="relative h-[200px]">
                     <img
                       src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                       alt={property.title}
@@ -247,45 +258,48 @@ export default function PropertiesPage() {
                         target.src = '/no-image.jpg';
                       }}
                     />
-                    <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
-                      {property.deal_type === "sale" ? "Продажа" : "Аренда"}
-                    </div>
+                    {property.is_viewed && property.owner_id !== currentUserId && (
+                      <div className="absolute top-4 left-4 bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
+                        <FaCheck className="w-2.5 h-2.5" />
+                        Просмотрено
+                      </div>
+                    )}
                     <button
                       onClick={(e) => toggleFavorite(e, property.id)}
-                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                      className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
                         favorites.has(property.id)
                           ? 'bg-red-50 text-red-600 hover:bg-red-100'
                           : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
                       } shadow-lg`}
                     >
-                      <FaHeart className={`w-5 h-5 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
+                      <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
                     </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                      <p className="text-white text-2xl font-bold">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                      <p className="text-white text-xl font-bold">
                         {formatPrice(property.price)}
                       </p>
                     </div>
                   </div>
 
                   {/* Информация */}
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
-                    <div className="flex items-center text-gray-600 mb-4">
-                      <FaMapMarkerAlt className="mr-2" />
+                  <div className="p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
+                    <div className="flex items-center text-gray-600 mb-3">
+                      <FaMapMarkerAlt className="mr-1 w-3 h-3" />
                       <p className="text-sm line-clamp-1">{property.address}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-gray-600 mb-3">
+                    <div className="flex items-center gap-3 text-gray-600 mb-2">
                       <div className="flex items-center gap-1">
-                        <FaBed className="w-4 h-4" />
-                        <span>{property.rooms} комнат</span>
+                        <FaBed className="w-3 h-3" />
+                        <span className="text-sm">{property.rooms} комнат</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <FaRulerCombined className="w-4 h-4" />
-                        <span>Площадь: {property.area} м²</span>
+                        <FaRulerCombined className="w-3 h-3" />
+                        <span className="text-sm">Площадь: {property.area} м²</span>
                       </div>
                     </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-xs text-gray-500">
+                      <FaRegCalendarAlt className="w-3 h-3 mr-1" />
                       <span>Создано: {formatDate(property.created_at)}</span>
                     </div>
                   </div>

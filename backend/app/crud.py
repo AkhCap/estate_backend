@@ -71,15 +71,30 @@ def get_properties(db: Session, skip: int = 0, limit: int = 10):
     return properties
 
 # Получение одного объявления по ID
-def get_property(db: Session, property_id: int):
+def get_property(db: Session, property_id: int, user_id: int = None):
     prop = db.query(models.Property).filter(models.Property.id == property_id).first()
     if prop:
         # Преобразуем JSON поля в списки
-        prop.windowView = prop.windowView or []
+        prop.window_view = prop.window_view or []
         prop.parking = prop.parking or []
-        prop.livingConditions = prop.livingConditions or []
-        prop.contactMethod = prop.contactMethod or []
-
+        prop.living_conditions = prop.living_conditions or []
+        prop.contact_method = prop.contact_method or []
+        prop.furniture = prop.furniture or []
+        prop.appliances = prop.appliances or []
+        prop.connectivity = prop.connectivity or []
+        
+        # По умолчанию устанавливаем is_viewed в False
+        prop.is_viewed = False
+        
+        # Добавляем информацию о просмотре только если:
+        # 1. Пользователь авторизован (user_id не None)
+        # 2. Пользователь не является владельцем объявления
+        if user_id and prop.owner_id != user_id:
+            view = db.query(models.PropertyViews).filter(
+                models.PropertyViews.user_id == user_id,
+                models.PropertyViews.property_id == property_id
+            ).first()
+            prop.is_viewed = view is not None
     return prop
 
 # Создание объявления
@@ -96,22 +111,26 @@ def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int
         property_type=property.property_type,
         deal_type=property.deal_type,
         owner_id=owner_id,
-        propertyCondition=property.propertyCondition or "",
-        hasBalcony=property.hasBalcony if property.hasBalcony is not None else False,
-        windowView=property.windowView or [],
+        property_condition=property.property_condition or "",
+        has_balcony=property.has_balcony if property.has_balcony is not None else False,
+        window_view=property.window_view or [],
         bathroom=property.bathroom or "",
-        bathType=property.bathType or "",
+        bath_type=property.bath_type or "",
         heating=property.heating or "",
         renovation=property.renovation or "",
-        liftsPassenger=property.liftsPassenger or 0,
-        liftsFreight=property.liftsFreight or 0,
+        lifts_passenger=property.lifts_passenger or 0,
+        lifts_freight=property.lifts_freight or 0,
         parking=property.parking or [],
         prepayment=property.prepayment or "нет",
         deposit=property.deposit or 0.0,
-        livingConditions=property.livingConditions or [],
-        whoRents=property.whoRents or "",
-        landlordContact=property.landlordContact or "",
-        contactMethod=property.contactMethod or []
+        living_conditions=property.living_conditions or [],
+        who_rents=property.who_rents or "",
+        landlord_contact=property.landlord_contact or "",
+        contact_method=property.contact_method or [],
+        furniture=property.furniture or [],
+        appliances=property.appliances or [],
+        connectivity=property.connectivity or [],
+        build_year=property.build_year
     )
 
     db.add(db_property)
@@ -121,17 +140,51 @@ def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int
 
 # Обновление объявления
 def update_property(db: Session, property_id: int, property_update: schemas.PropertyUpdate) -> Optional[models.Property]:
-    db_property = get_property(db, property_id)
-    if not db_property:
-        return None
+    try:
+        print(f"Начинаем обновление объявления {property_id}")
+        db_property = get_property(db, property_id)
+        if not db_property:
+            print(f"Объявление {property_id} не найдено")
+            return None
 
-    update_data = property_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_property, key, value)
+        # Получаем только установленные значения
+        update_data = property_update.model_dump(exclude_unset=True)
+        print(f"Данные для обновления: {update_data}")
+        
+        # Преобразуем camelCase в snake_case
+        field_mapping = {
+            'windowView': 'window_view',
+            'hasBalcony': 'has_balcony',
+            'bathType': 'bath_type',
+            'propertyCondition': 'property_condition',
+            'liftsPassenger': 'lifts_passenger',
+            'liftsFreight': 'lifts_freight',
+            'livingConditions': 'living_conditions',
+            'landlordContact': 'landlord_contact',
+            'contactMethod': 'contact_method',
+            'buildYear': 'build_year'
+        }
+        
+        # Обновляем поля объекта с учетом маппинга
+        for key, value in update_data.items():
+            # Преобразуем имя поля если оно есть в маппинге
+            db_field = field_mapping.get(key, key)
+            print(f"Обновляем поле {key} -> {db_field}: {value}")
+            setattr(db_property, db_field, value)
 
-    db.commit()
-    db.refresh(db_property)
-    return db_property
+        try:
+            db.commit()
+            db.refresh(db_property)
+            print(f"Объявление {property_id} успешно обновлено")
+            return db_property
+        except Exception as db_error:
+            print(f"Ошибка при сохранении в БД: {db_error}")
+            db.rollback()
+            raise
+    except Exception as e:
+        print(f"Ошибка в update_property: {e}")
+        db.rollback()
+        raise
 
 # Удаление объявления
 def delete_property(db: Session, property_id: int) -> Optional[models.Property]:
@@ -239,7 +292,10 @@ def get_history_by_user(db: Session, user_id: int):
         .options(
             joinedload(models.History.property).joinedload(models.Property.images)
         )
-        .filter(models.History.user_id == user_id)
+        .filter(
+            models.History.user_id == user_id,
+            models.Property.owner_id != user_id  # Исключаем объявления текущего пользователя
+        )
         .order_by(models.History.viewed_at.desc())
         .all()
     )
@@ -254,3 +310,39 @@ def get_history_by_user(db: Session, user_id: int):
             unique_history.append(h)
     
     return unique_history
+
+# Функции для работы с просмотрами
+def add_property_view(db: Session, user_id: int, property_id: int):
+    """Добавляет запись о просмотре объявления"""
+    view = models.PropertyViews(user_id=user_id, property_id=property_id)
+    db.add(view)
+    db.commit()
+    db.refresh(view)
+    return view
+
+def is_property_viewed(db: Session, user_id: int, property_id: int) -> bool:
+    """
+    Проверяет, было ли объявление просмотрено пользователем.
+    Возвращает True только если:
+    1. Пользователь не является владельцем объявления
+    2. Пользователь просматривал детальную страницу объявления
+    """
+    # Получаем объявление для проверки владельца
+    property = db.query(models.Property).filter(models.Property.id == property_id).first()
+    if not property or property.owner_id == user_id:
+        return False
+        
+    # Проверяем наличие записи в таблице просмотров
+    view = db.query(models.PropertyViews).filter(
+        models.PropertyViews.user_id == user_id,
+        models.PropertyViews.property_id == property_id
+    ).first()
+    
+    # Проверяем также наличие записи в истории просмотров
+    history = db.query(models.History).filter(
+        models.History.user_id == user_id,
+        models.History.property_id == property_id
+    ).first()
+    
+    # Возвращаем True только если есть и запись о просмотре, и запись в истории
+    return view is not None and history is not None

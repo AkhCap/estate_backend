@@ -307,7 +307,7 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
       case 6:
         return !!formData.rooms && 
                !!formData.area && formData.area > 0 && 
-               (formData.floor !== undefined && formData.floor >= 0) && 
+               (formData.floor === "Цокольный" || (typeof formData.floor === "number" && formData.floor >= 0)) && 
                !!formData.totalFloors && formData.totalFloors > 0;
       case 7:
         return (formData.photos.length > 0) || (formData.existingPhotos !== undefined && formData.existingPhotos.length > 0);
@@ -566,15 +566,24 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
             </div>
             <div>
               <label className={labelClass}>Этаж</label>
-              <input
-                type="number"
-                name="floor"
-                value={formData.floor || ""}
-                onChange={handleInputChange}
-                className={inputClass}
-                min="0"
-                placeholder="Введите этаж"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleFloorSelect("Цокольный")}
+                  className={formData.floor === "Цокольный" ? activeButtonClass : baseButtonClass}
+                >
+                  Цокольный
+                </button>
+                <input
+                  type="number"
+                  name="floor"
+                  value={formData.floor === "Цокольный" ? "" : formData.floor || ""}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                  min="0"
+                  placeholder="Введите этаж"
+                />
+              </div>
             </div>
             <div>
               <label className={labelClass}>Всего этажей</label>
@@ -777,6 +786,26 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
             </div>
 
             <div>
+              <label className={labelClass}>Ванная</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleBathTypeSelect("Душевая кабина")}
+                  className={formData.bathType === "Душевая кабина" ? activeButtonClass : baseButtonClass}
+                >
+                  Душевая кабина
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBathTypeSelect("Ванна")}
+                  className={formData.bathType === "Ванна" ? activeButtonClass : baseButtonClass}
+                >
+                  Ванна
+                </button>
+              </div>
+            </div>
+
+            <div>
               <label className={labelClass}>Бытовая техника</label>
               <div className="grid grid-cols-2 gap-4">
                 {[
@@ -821,6 +850,26 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
                     {connection}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Условия проживания</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleLivingConditionsToggle("children")}
+                  className={formData.livingConditions?.includes("children") ? activeButtonClass : baseButtonClass}
+                >
+                  Можно с детьми
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLivingConditionsToggle("pets")}
+                  className={formData.livingConditions?.includes("pets") ? activeButtonClass : baseButtonClass}
+                >
+                  Можно с домашними животными
+                </button>
               </div>
             </div>
           </div>
@@ -994,18 +1043,20 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
       [name]:
         name === "rooms"
           ? value
+          : name === "floor"
+          ? value === "" ? 0 : Number(value)
           : [
               "price",
               "area",
               "ceilingHeight",
-              "floor",
               "totalFloors",
               "deposit",
               "liftsPassenger",
               "liftsFreight",
               "owner_id",
+              "buildYear"
             ].includes(name)
-          ? Number(value)
+          ? value === "" ? 0 : Number(value)
           : value,
     }));
 
@@ -1028,46 +1079,79 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.address || !formData.apartmentNumber || !formData.rooms || !formData.owner_id) {
-      setError("Пожалуйста, заполните все обязательные поля");
+    
+    // Проверяем все обязательные поля
+    const requiredFields = {
+      address: "Адрес",
+      apartmentNumber: "Номер квартиры/офиса",
+      rooms: "Количество комнат",
+      owner_id: "ID владельца",
+      price: "Цена",
+      description: "Описание",
+      landlordContact: "Контактный телефон",
+      contactMethod: "Способ связи",
+      main_category: "Категория",
+      sub_category: "Подкатегория",
+      area: "Площадь",
+      totalFloors: "Количество этажей",
+      propertyCondition: "Состояние",
+      renovation: "Ремонт",
+      heating: "Отопление",
+      bathroom: "Санузел",
+      buildYear: "Год постройки"
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([key]) => {
+        const value = formData[key as keyof PropertyFormData];
+        if (Array.isArray(value)) {
+          return value.length === 0;
+        }
+        return !value;
+      })
+      .map(([_, label]) => label);
+
+    if (missingFields.length > 0) {
+      setError(`Пожалуйста, заполните следующие обязательные поля: ${missingFields.join(", ")}`);
       return;
     }
-    try {
-      const payload = {
-        title: generateTitle(formData),
-        description: formData.description,
-        price: formData.price,
-        address: formData.address,
-        apartment_number: formData.apartmentNumber,
-        rooms: formData.rooms,
-        area: formData.area,
-        ceiling_height: formData.ceilingHeight,
-        floor: formData.floor,
-        total_floors: formData.totalFloors,
-        property_type: formData.sub_category || "",
-        owner_id: formData.owner_id,
-        deal_type: formData.deal_type === "Аренда" ? "rent" : "sale",
-        property_condition: formData.propertyCondition,
-        has_balcony: formData.hasBalcony,
-        window_view: Array.isArray(formData.windowView) ? formData.windowView : [],
-        bathroom: formData.bathroom,
-        bath_type: formData.bathType,
-        heating: formData.heating,
-        renovation: formData.renovation,
-        lifts_passenger: formData.liftsPassenger,
-        lifts_freight: formData.liftsFreight,
-        parking: Array.isArray(formData.parking) ? formData.parking : [],
-        prepayment: formData.prepayment,
-        deposit: formData.deposit,
-        living_conditions: Array.isArray(formData.livingConditions) ? formData.livingConditions : [],
-        landlord_contact: formData.landlordContact,
-        contact_method: Array.isArray(formData.contactMethod) ? formData.contactMethod : [],
-        furniture: Array.isArray(formData.furniture) ? formData.furniture : [],
-        appliances: Array.isArray(formData.appliances) ? formData.appliances : [],
-        connectivity: Array.isArray(formData.connectivity) ? formData.connectivity : [],
-        build_year: formData.buildYear
-      };
 
+    const payload = {
+      title: generateTitle(formData),
+      description: formData.description,
+      price: formData.price,
+      address: formData.address,
+      apartment_number: formData.apartmentNumber,
+      rooms: formData.rooms,
+      area: formData.area,
+      ceiling_height: formData.ceilingHeight,
+      floor: formData.floor === "Цокольный" ? -1 : Number(formData.floor),
+      total_floors: formData.totalFloors,
+      property_type: formData.sub_category || "",
+      owner_id: formData.owner_id,
+      deal_type: formData.deal_type === "Аренда" ? "rent" : "sale",
+      property_condition: formData.propertyCondition,
+      has_balcony: formData.hasBalcony,
+      window_view: Array.isArray(formData.windowView) ? formData.windowView : [],
+      bathroom: formData.bathroom,
+      bath_type: formData.bathType,
+      heating: formData.heating,
+      renovation: formData.renovation,
+      lifts_passenger: formData.liftsPassenger,
+      lifts_freight: formData.liftsFreight,
+      parking: Array.isArray(formData.parking) ? formData.parking : [],
+      prepayment: formData.prepayment,
+      deposit: formData.deposit,
+      living_conditions: Array.isArray(formData.livingConditions) ? formData.livingConditions : [],
+      landlord_contact: formData.landlordContact,
+      contact_method: Array.isArray(formData.contactMethod) ? formData.contactMethod : [],
+      furniture: Array.isArray(formData.furniture) ? formData.furniture : [],
+      appliances: Array.isArray(formData.appliances) ? formData.appliances : [],
+      connectivity: Array.isArray(formData.connectivity) ? formData.connectivity : [],
+      build_year: Number(formData.buildYear)
+    };
+
+    try {
       let response;
       if (isEditing && propertyId) {
         response = await axios.put(`/properties/${propertyId}`, payload);
@@ -1091,11 +1175,14 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
       router.push(`/properties/${responsePropertyId}`);
     } catch (err: any) {
       console.error("Ошибка при " + (isEditing ? "обновлении" : "создании") + " объявления:", err);
+      console.error("Payload:", JSON.stringify(payload, null, 2));
       
       let errorMessage = "Ошибка при " + (isEditing ? "обновлении" : "создании") + " объявления";
       
       if (err.response?.data) {
         const errorData = err.response.data;
+        console.error("Error response data:", JSON.stringify(errorData, null, 2));
+        
         if (typeof errorData === 'string') {
           errorMessage = errorData;
         } else if (errorData.detail) {
@@ -1105,7 +1192,7 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
             errorMessage = errorData.detail
               .map((item: any) => {
                 if (typeof item === 'object' && item.msg) {
-                  return String(item.msg);
+                  return `${item.loc.join('. ')}: ${item.msg}`;
                 }
                 return String(item);
               })
@@ -1113,11 +1200,11 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
               .join(', ');
           } else if (typeof errorData.detail === 'object') {
             const messages: Array<string> = [];
-            for (const [_, value] of Object.entries(errorData.detail)) {
+            for (const [key, value] of Object.entries(errorData.detail)) {
               if (Array.isArray(value)) {
-                messages.push(value.map((v: unknown) => String(v)).join(', '));
+                messages.push(`${key}: ${value.map((v: unknown) => String(v)).join(', ')}`);
               } else {
-                messages.push(String(value));
+                messages.push(`${key}: ${String(value)}`);
               }
             }
             errorMessage = messages.join('. ');
@@ -1146,6 +1233,11 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
 
   const handleBathroomSelect = (type: "Разделенный" | "Совмещенный") => {
     setFormData(prev => ({ ...prev, bathroom: type }));
+    updateStepStatus("property_condition");
+  };
+
+  const handleBathTypeSelect = (type: "Душевая кабина" | "Ванна") => {
+    setFormData(prev => ({ ...prev, bathType: type }));
     updateStepStatus("property_condition");
   };
 
@@ -1339,6 +1431,20 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
       return { ...prev, parking: newParking };
     });
     updateStepStatus("property_condition");
+  };
+
+  const handleLivingConditionsToggle = (condition: "children" | "pets") => {
+    const currentConditions = formData.livingConditions || [];
+    const newConditions = currentConditions.includes(condition)
+      ? currentConditions.filter(c => c !== condition)
+      : [...currentConditions, condition];
+    setFormData(prev => ({ ...prev, livingConditions: newConditions }));
+    updateStepStatus("additional");
+  };
+
+  const handleFloorSelect = (floor: "Цокольный") => {
+    setFormData(prev => ({ ...prev, floor }));
+    updateStepStatus("rooms");
   };
 
   return (

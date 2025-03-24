@@ -2,11 +2,29 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaHome, FaBuilding, FaHotel, FaBed, FaRulerCombined, FaMoneyBillWave, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt } from "react-icons/fa";
+import { FaSearch, FaHome, FaBuilding, FaHotel, FaBed, FaRulerCombined, FaMoneyBillWave, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck } from "react-icons/fa";
 import { formatPrice } from "../lib/utils";
+import { useRouter } from "next/navigation";
+import PropertyCard from "../components/PropertyCard";
+import axios from "axios";
 
 // Добавляем базовый URL для изображений
 const BASE_URL = "http://localhost:8000";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
 
 interface Image {
   id: number;
@@ -23,6 +41,8 @@ interface Property {
   images: Image[];
   address: string;
   created_at: string;
+  is_viewed: boolean;
+  owner_id: number;
 }
 
 // Функция форматирования даты
@@ -46,6 +66,7 @@ const formatDate = (dateString: string) => {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceMin, setPriceMin] = useState("");
@@ -58,6 +79,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
   const [isRoomsOpen, setIsRoomsOpen] = useState(false);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   // Добавляем опции для выпадающих списков
   const dealTypes = [
@@ -90,26 +114,59 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const fetchProperties = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:8000/properties/');
-        if (!response.ok) {
-          throw new Error('Ошибка при загрузке данных');
+        setLoading(true);
+        // Загружаем объявления
+        const response = await axios.get(`${BASE_URL}/properties/list`, {
+          params: {
+            include_viewed: true,
+            limit: 8
+          }
+        });
+        
+        // Добавляем отладочный вывод
+        console.log('Properties data:', response.data.map(p => ({
+          id: p.id,
+          is_viewed: p.is_viewed,
+          owner_id: p.owner_id
+        })));
+        
+        setProperties(response.data);
+
+        // Проверяем авторизацию и загружаем избранное
+        const token = localStorage.getItem("token");
+        if (token) {
+          try {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            const [userResponse, favoritesResponse] = await Promise.all([
+              axios.get(`${BASE_URL}/users/me`),
+              axios.get(`${BASE_URL}/favorites`)
+            ]);
+            setCurrentUserId(userResponse.data.id);
+            const favoritesData = favoritesResponse.data;
+            setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
+            setIsAuthenticated(true);
+          } catch (err) {
+            console.error('Error fetching favorites:', err);
+            localStorage.removeItem("token");
+            setIsAuthenticated(false);
+            setCurrentUserId(null);
+          }
         }
-        const data = await response.json();
-        setProperties(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Произошла ошибка');
+        console.error('Error fetching properties:', err);
+        setError('Ошибка при загрузке данных');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProperties();
+    fetchData();
   }, []);
 
   // Фильтрация объявлений по параметрам
-  const filteredListings = properties.filter((property) => {
+  const filteredListings = Array.isArray(properties) ? properties.filter((property) => {
     return (
       (selectedCategory === "all" || property.deal_type === selectedCategory) &&
       (!priceMin || property.price >= parseInt(priceMin)) &&
@@ -118,7 +175,7 @@ export default function HomePage() {
       (!area || property.area >= parseInt(area)) &&
       (!search || property.title.toLowerCase().includes(search.toLowerCase()))
     );
-  });
+  }) : [];
 
   const getDealTypeLabel = (type: string) => {
     switch (type) {
@@ -132,6 +189,73 @@ export default function HomePage() {
         return type;
     }
   };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const searchParams = new URLSearchParams();
+    
+    for (const [key, value] of formData.entries()) {
+      if (value) {
+        searchParams.append(key, value);
+      }
+    }
+    
+    router.push(`/properties?${searchParams.toString()}`);
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, propertyId: number) => {
+    e.preventDefault(); // Предотвращаем переход по ссылке
+    
+    const token = localStorage.getItem('token');
+    if (!token || !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      // Устанавливаем заголовок авторизации
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      if (favorites.has(propertyId)) {
+        await axios.delete(`${BASE_URL}/favorites/${propertyId}`);
+        setFavorites(prev => {
+          const next = new Set(prev);
+          next.delete(propertyId);
+          return next;
+        });
+      } else {
+        await axios.post(`${BASE_URL}/favorites`, { property_id: propertyId });
+        setFavorites(prev => new Set([...prev, propertyId]));
+      }
+    } catch (err) {
+      console.error('Ошибка при изменении избранного:', err);
+      if (err.response?.status === 401) {
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
+        router.push('/login');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-600 text-center">
+          <p className="text-xl font-semibold mb-2">Ошибка загрузки данных</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -380,41 +504,52 @@ export default function HomePage() {
             <div className="text-center py-12 text-red-600">
               <p>{error}</p>
             </div>
-          ) : filteredListings.length === 0 ? (
+          ) : !Array.isArray(properties) ? (
             <div className="text-center py-12">
-              <p className="text-xl text-gray-600">По вашему запросу ничего не найдено</p>
-              <p className="mt-2 text-gray-500">Попробуйте изменить параметры поиска</p>
+              <p className="text-xl text-gray-600">Ошибка: данные не являются массивом</p>
+              <p className="mt-2 text-gray-500">Получено: {JSON.stringify(properties)}</p>
+            </div>
+          ) : properties.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-xl text-gray-600">Объявлений пока нет</p>
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold">Найдено объявлений: {filteredListings.length}</h2>
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-600">Сортировать по:</span>
-                  <select
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                <h2 className="text-3xl font-bold">Популярные объявления</h2>
+                <Link
+                  href="/properties"
+                  className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2"
+                >
+                  Смотреть все
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <option value="date_desc">Сначала новые</option>
-                    <option value="date_asc">Сначала старые</option>
-                    <option value="price_asc">Сначала дешевые</option>
-                    <option value="price_desc">Сначала дорогие</option>
-                  </select>
-                </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredListings.map((property, index) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {properties.slice(0, 8).map((property) => (
                   <motion.div
                     key={property.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="group"
+                    className="group relative"
                   >
                     <Link href={`/properties/${property.id}`}>
-                      <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
+                      <div className="bg-white rounded-xl shadow-md overflow-hidden">
                         {/* Изображение */}
-                        <div className="relative h-64">
+                        <div className="relative h-[200px]">
                           <img
                             src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                             alt={property.title}
@@ -424,35 +559,48 @@ export default function HomePage() {
                               target.src = '/no-image.jpg';
                             }}
                           />
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                            <p className="text-white text-2xl font-bold">
+                          {property.is_viewed && property.owner_id !== currentUserId && (
+                            <div className="absolute top-4 left-4 bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
+                              <FaCheck className="w-2.5 h-2.5" />
+                              Просмотрено
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => toggleFavorite(e, property.id)}
+                            className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                              favorites.has(property.id)
+                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
+                            } shadow-lg`}
+                          >
+                            <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                            <p className="text-white text-xl font-bold">
                               {formatPrice(property.price)}
                             </p>
-                          </div>
-                          <div className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
-                            {getDealTypeLabel(property.deal_type)}
                           </div>
                         </div>
 
                         {/* Информация */}
-                        <div className="p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
-                          <div className="flex items-center text-gray-600 mb-4">
-                            <FaMapMarkerAlt className="mr-2" />
+                        <div className="p-4">
+                          <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
+                          <div className="flex items-center text-gray-600 mb-3">
+                            <FaMapMarkerAlt className="mr-1 w-3 h-3" />
                             <p className="text-sm line-clamp-1">{property.address || "Адрес не указан"}</p>
                           </div>
-                          <div className="flex items-center gap-4 text-gray-600 mb-3">
+                          <div className="flex items-center gap-3 text-gray-600 mb-2">
                             <div className="flex items-center gap-1">
-                              <FaBed className="w-4 h-4" />
-                              <span>{property.rooms} комнат</span>
+                              <FaBed className="w-3 h-3" />
+                              <span className="text-sm">{property.rooms} комнат</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <FaRulerCombined className="w-4 h-4" />
-                              <span>Площадь: {property.area} м²</span>
+                              <FaRulerCombined className="w-3 h-3" />
+                              <span className="text-sm">Площадь: {property.area} м²</span>
                             </div>
                           </div>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                          <div className="flex items-center text-xs text-gray-500">
+                            <FaRegCalendarAlt className="w-3 h-3 mr-1" />
                             <span>Создано: {formatDate(property.created_at)}</span>
                           </div>
                         </div>

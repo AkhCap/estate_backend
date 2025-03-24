@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func, ARRAY
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func, ARRAY, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -35,6 +35,7 @@ class User(Base):
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan") 
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     history = relationship("History", back_populates="user", cascade="all, delete-orphan")
+    property_views = relationship("PropertyViews", back_populates="user", cascade="all, delete-orphan")
 
   
 
@@ -71,7 +72,7 @@ class Property(Base):
     living_conditions = Column(ARRAY(String), default=list)
     who_rents = Column(String, nullable=True)
     landlord_contact = Column(String, nullable=True)
-    contact_method = Column(ARRAY(String), default=list)
+    contact_method = Column(JSON)
     build_year = Column(Integer, nullable=True)
     furniture = Column(ARRAY(String), default=list)
     appliances = Column(ARRAY(String), default=list)
@@ -87,6 +88,7 @@ class Property(Base):
     reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
     history = relationship("History", back_populates="property", cascade="all, delete-orphan")
     images = relationship("PropertyImage", back_populates="property", cascade="all, delete", passive_deletes=True)
+    property_views = relationship("PropertyViews", back_populates="property", cascade="all, delete-orphan")
 
  
 
@@ -137,3 +139,15 @@ class History(Base):
 
     user = relationship("User", back_populates="history")
     property = relationship("Property", back_populates="history")
+
+
+class PropertyViews(Base):
+    __tablename__ = "property_views"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    viewed_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="property_views")
+    property = relationship("Property", back_populates="property_views")

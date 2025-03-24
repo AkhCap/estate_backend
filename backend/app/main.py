@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -38,7 +38,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=3600
 )
 
 # Подключаем роутеры
@@ -49,13 +50,14 @@ app.include_router(reviews.router, prefix="/reviews", tags=["Отзывы"])
 app.include_router(history.router, prefix="/users/me/history", tags=["История"])
 app.include_router(uploads.router, prefix="/uploads", tags=["Uploads"])
 
-@app.get("/uploads/{file_name}")
-async def get_file(file_name: str):
-    file_path = os.path.join("uploads", file_name)
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    else:
-        raise HTTPException(status_code=404, detail="File not found")
+# Добавляем обработчик ошибок
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print(f"Global error handler caught: {exc}")  # Логируем ошибку
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)}
+    )
 
 @app.get("/")
 def read_root():

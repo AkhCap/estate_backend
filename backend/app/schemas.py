@@ -72,16 +72,14 @@ class PropertyCreate(BaseModel):
     description: str
     price: float
     address: str
-    rooms: str  
+    rooms: str
     area: float
     floor: int
     total_floors: int
     property_type: str
-    owner_id: int
-    deal_type: DealType
-    ceiling_height: Optional[float] = None
+    deal_type: str
     property_condition: Optional[str] = None
-    has_balcony: Optional[bool] = False
+    has_balcony: Optional[bool] = None
     window_view: Optional[List[str]] = []
     bathroom: Optional[str] = None
     bath_type: Optional[str] = None
@@ -96,10 +94,11 @@ class PropertyCreate(BaseModel):
     who_rents: Optional[str] = None
     landlord_contact: Optional[str] = None
     contact_method: Optional[List[str]] = []
-    build_year: Optional[int] = None
     furniture: Optional[List[str]] = []
     appliances: Optional[List[str]] = []
     connectivity: Optional[List[str]] = []
+    build_year: Optional[int] = None
+    ceiling_height: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -140,6 +139,7 @@ class PropertyOut(BaseModel):
     appliances: List[str] = []
     connectivity: List[str] = []
     created_at: datetime
+    is_viewed: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -154,7 +154,28 @@ class PropertyUpdate(BaseModel):
     floor: Optional[int] = None
     total_floors: Optional[int] = None
     property_type: Optional[str] = None
-    deal_type: Optional[DealType] = None
+    deal_type: Optional[str] = None
+    property_condition: Optional[str] = None
+    has_balcony: Optional[bool] = None
+    window_view: Optional[List[str]] = None
+    bathroom: Optional[str] = None
+    bath_type: Optional[str] = None
+    heating: Optional[str] = None
+    renovation: Optional[str] = None
+    lifts_passenger: Optional[int] = None
+    lifts_freight: Optional[int] = None
+    parking: Optional[List[str]] = None
+    prepayment: Optional[str] = None
+    deposit: Optional[float] = None
+    living_conditions: Optional[List[str]] = None
+    who_rents: Optional[str] = None
+    landlord_contact: Optional[str] = None
+    contact_method: Optional[List[str]] = None
+    furniture: Optional[List[str]] = None
+    appliances: Optional[List[str]] = None
+    connectivity: Optional[List[str]] = None
+    build_year: Optional[int] = None
+    ceiling_height: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -208,3 +229,16 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class PropertyViewsBase(BaseModel):
+    property_id: int
+
+class PropertyViewsCreate(PropertyViewsBase):
+    pass
+
+class PropertyViewsOut(PropertyViewsBase):
+    id: int
+    viewed_at: datetime
+    user_id: int
+
+    model_config = {"from_attributes": True}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaClock, FaTrash, FaRegCalendarAlt, FaSearch, FaExclamationTriangle } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaClock, FaTrash, FaRegCalendarAlt, FaSearch, FaExclamationTriangle, FaCheck } from "react-icons/fa";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -20,6 +20,8 @@ interface Property {
   area: number;
   images: Array<{ id: number; image_url: string }>;
   created_at: string;
+  is_viewed: boolean;
+  owner_id: number;
 }
 
 interface HistoryItem {
@@ -119,6 +121,7 @@ export default function HistoryPage() {
   const [sortBy, setSortBy] = useState<"date" | "price">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     itemId?: number;
@@ -135,8 +138,15 @@ export default function HistoryPage() {
       if (isRetry) {
         setIsRetrying(true);
       }
-      const response = await axios.get("/users/me/history");
-      setHistory(response.data || []);
+      const [userResponse, historyResponse] = await Promise.all([
+        axios.get('/users/me'),
+        axios.get("/users/me/history")
+      ]);
+      setCurrentUserId(userResponse.data.id);
+      const filteredHistory = historyResponse.data.filter(
+        (item: any) => item.property.owner_id !== userResponse.data.id
+      );
+      setHistory(filteredHistory);
       setError("");
     } catch (err: any) {
       console.error("Error fetching history:", err);
@@ -148,8 +158,6 @@ export default function HistoryPage() {
           return;
         }
         
-        // Если есть токен, но получили 401, возможно он истек
-        // Попробуем обновить токен через axios interceptor
         if (!isRetry) {
           await fetchHistory(true);
           return;
@@ -182,7 +190,8 @@ export default function HistoryPage() {
       await axios.delete("/users/me/history");
       setHistory([]);
     } catch (err: any) {
-      console.error(err);
+      console.error("Error clearing history:", err);
+      setError(err.response?.data?.detail || "Ошибка при очистке истории просмотров");
     }
   };
 
@@ -358,7 +367,7 @@ export default function HistoryPage() {
               <Link href={`/properties/${item.property.id}`}>
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   {/* Изображение */}
-                  <div className="relative aspect-[4/3]">
+                  <div className="relative h-[200px]">
                     <img
                       src={item.property.images && item.property.images.length > 0 
                         ? `${BASE_URL}/uploads/properties/${item.property.images[0].image_url}` 
@@ -370,18 +379,14 @@ export default function HistoryPage() {
                         target.src = '/no-image.jpg';
                       }}
                     />
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setConfirmModal({ isOpen: true, itemId: item.id, isClearAll: false });
-                      }}
-                      className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 hover:bg-white"
-                    >
-                      <FaTrash className="text-red-500" />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                      <p className="text-white text-2xl font-bold">
+                    {item.property.is_viewed && item.property.owner_id !== currentUserId && (
+                      <div className="absolute top-4 right-4 bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
+                        <FaCheck className="w-2.5 h-2.5" />
+                        Просмотрено
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                      <p className="text-white text-xl font-bold">
                         {formatPrice(item.property.price)}
                       </p>
                     </div>

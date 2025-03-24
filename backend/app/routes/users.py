@@ -195,6 +195,7 @@ def remove_from_history(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     
+    # Сначала находим запись, чтобы получить property_id
     history_item = db.query(models.History).filter(
         models.History.id == history_id,
         models.History.user_id == user.id
@@ -203,6 +204,26 @@ def remove_from_history(
     if not history_item:
         raise HTTPException(status_code=404, detail="Запись не найдена в истории")
     
-    db.delete(history_item)
+    # Удаляем все записи для этого объявления
+    db.query(models.History).filter(
+        models.History.user_id == user.id,
+        models.History.property_id == history_item.property_id
+    ).delete()
+    
     db.commit()
     return {"detail": "Запись удалена из истории"}
+
+@router.delete("/me/history", summary="Clear all history")
+def clear_history(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Удаляем все записи истории для данного пользователя
+    db.query(models.History).filter(models.History.user_id == user.id).delete()
+    db.commit()
+    
+    return {"detail": "История просмотров очищена"}

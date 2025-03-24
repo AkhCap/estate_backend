@@ -16,7 +16,8 @@ import {
   FaBath,
   FaSortAmountDown,
   FaSortAmountUp,
-  FaRegCalendarAlt
+  FaRegCalendarAlt,
+  FaCheck
 } from "react-icons/fa";
 
 const BASE_URL = "http://localhost:8000";
@@ -41,6 +42,8 @@ interface Property {
   floor?: number;
   total_floors?: number;
   created_at: string;
+  is_viewed: boolean;
+  owner_id: number;
 }
 
 const container = {
@@ -86,14 +89,23 @@ export default function FavoritesPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchFavorites = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get('/favorites');
+        const [userResponse, favoritesResponse] = await Promise.all([
+          axios.get('/users/me'),
+          axios.get('/favorites')
+        ]);
+        setCurrentUserId(userResponse.data.id);
         const favoriteProperties = await Promise.all(
-          response.data.map(async (fav: any) => {
-            const propertyResponse = await axios.get(`/properties/${fav.property_id}`);
+          favoritesResponse.data.map(async (fav: any) => {
+            const propertyResponse = await axios.get(`/properties/${fav.property_id}`, {
+              params: {
+                is_detail_view: false
+              }
+            });
             return propertyResponse.data;
           })
         );
@@ -105,7 +117,7 @@ export default function FavoritesPage() {
         setLoading(false);
       }
     };
-    fetchFavorites();
+    fetchData();
   }, []);
 
   const removeFavorite = async (propertyId: number, e: React.MouseEvent) => {
@@ -254,16 +266,21 @@ export default function FavoritesPage() {
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                   <div className="flex flex-col md:flex-row">
                     {/* Изображение */}
-                    <div className="relative md:w-72 aspect-[4/3] md:aspect-auto">
+                    <div className="relative h-[200px]">
                       <img
                         src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
                         alt={property.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = '/no-image.jpg';
                         }}
                       />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <p className="text-white text-xl font-bold">
+                          {formatPrice(property.price)}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Информация */}

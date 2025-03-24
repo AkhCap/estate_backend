@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw } from "react-icons/fa";
 import ImageCarousel from "../../../components/ImageCarousel";
 
 const BASE_URL = "http://localhost:8000";
@@ -51,6 +51,8 @@ interface Property {
   appliances: string[];
   connectivity: string[];
   ceiling_height: number;
+  rent_duration?: string;
+  apartment_number?: string;
 }
 
 interface User {
@@ -322,7 +324,9 @@ export default function PropertyDetailPage() {
                   </div>
                   <div className="flex justify-between items-center py-3 border-b border-gray-100">
                     <span className="text-gray-600">Этаж</span>
-                    <span className="font-semibold text-gray-900">{property.floor} из {property.total_floors}</span>
+                    <span className="font-semibold text-gray-900">
+                      {property.floor === -1 ? "Цокольный" : property.floor} из {property.total_floors}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b border-gray-100">
                     <span className="text-gray-600">Балкон</span>
@@ -348,6 +352,16 @@ export default function PropertyDetailPage() {
                     <span className="text-gray-600">Ремонт</span>
                     <span className="font-semibold text-gray-900">{property.renovation}</span>
                   </div>
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                    <span className="text-gray-600">Высота потолков</span>
+                    <span className="font-semibold text-gray-900">{property.ceiling_height} м</span>
+                  </div>
+                  {property.apartment_number && (
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                      <span className="text-gray-600">Номер квартиры</span>
+                      <span className="font-semibold text-gray-900">{property.apartment_number}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -391,7 +405,7 @@ export default function PropertyDetailPage() {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.7 }}
               className="bg-white rounded-2xl p-8 shadow-lg"
             >
               <h2 className="text-2xl font-bold mb-6 text-gray-900">В квартире есть</h2>
@@ -474,26 +488,38 @@ export default function PropertyDetailPage() {
                     <div className="bg-gray-50 p-4 rounded-xl">
                       <span className="block text-sm text-gray-500 mb-1">Залог</span>
                       <span className="font-medium text-gray-900">{formatPrice(property.deposit)}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
                 {/* Условия проживания */}
-                {property.living_conditions && property.living_conditions.length > 0 && (
-                  <div className="border-t border-gray-100 pt-6">
-                    <span className="block text-sm text-gray-500 mb-3">Условия проживания</span>
-                    <div className="flex flex-wrap gap-2">
-                      {property.living_conditions.map((condition) => (
-                        <span 
-                          key={condition} 
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-600"
-                        >
-                          {condition}
-                        </span>
-                      ))}
+                <div className="border-t border-gray-100 pt-6">
+                  <span className="block text-sm text-gray-500 mb-3">Условия проживания</span>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-center p-4 rounded-xl bg-gray-50">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${property.living_conditions?.includes("children") ? "bg-green-100" : "bg-red-100"}`}>
+                        <FaChild className={`w-5 h-5 ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`} />
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="font-medium text-gray-900">Проживание с детьми</h3>
+                        <p className={`text-sm ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`}>
+                          {property.living_conditions?.includes("children") ? "Разрешено" : "Не разрешено"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 rounded-xl bg-gray-50">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${property.living_conditions?.includes("pets") ? "bg-green-100" : "bg-red-100"}`}>
+                        <FaPaw className={`w-5 h-5 ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`} />
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="font-medium text-gray-900">Домашние животные</h3>
+                        <p className={`text-sm ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`}>
+                          {property.living_conditions?.includes("pets") ? "Разрешено" : "Не разрешено"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Способ связи */}
                 {property.contact_method && property.contact_method.length > 0 && (
@@ -503,11 +529,7 @@ export default function PropertyDetailPage() {
                       {property.contact_method.map((method) => (
                         <span 
                           key={method} 
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                            method === property.contact_method[0]
-                              ? 'bg-blue-50 text-blue-600'
-                              : 'bg-gray-50 text-gray-600'
-                          }`}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-600"
                         >
                           {method === "Чат" ? (
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -519,9 +541,6 @@ export default function PropertyDetailPage() {
                             </svg>
                           )}
                           {method}
-                          {method === property.contact_method[0] && (
-                            <span className="ml-1 text-xs opacity-75">(предпочтительно)</span>
-                          )}
                         </span>
                       ))}
                     </div>
