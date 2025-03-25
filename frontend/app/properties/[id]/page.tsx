@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw, FaArrowRight, FaBath, FaShower, FaWindowMaximize, FaHashtag, FaEye, FaRulerVertical, FaWifi, FaUser } from "react-icons/fa";
 import ImageCarousel from "../../../components/ImageCarousel";
 
 const BASE_URL = "http://localhost:8000";
@@ -14,6 +14,12 @@ const BASE_URL = "http://localhost:8000";
 interface Image {
   id: number;
   image_url: string;
+}
+
+interface PriceHistory {
+  id: number;
+  price: number;
+  change_date: string;
 }
 
 interface Property {
@@ -53,6 +59,7 @@ interface Property {
   ceiling_height: number;
   rent_duration?: string;
   apartment_number?: string;
+  price_history?: PriceHistory[];
 }
 
 interface User {
@@ -178,10 +185,60 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
   const [selectedImage, setSelectedImage] = useState<number>(0);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [showPhone, setShowPhone] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [newPrice, setNewPrice] = useState<string>('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  const toggleDescription = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  };
+
+  const renderDescription = () => {
+    if (!property?.description) return null;
+    
+    const maxLength = 150;
+    const shouldTruncate = property.description.length > maxLength && !isDescriptionExpanded;
+    const displayText = shouldTruncate 
+      ? property.description.slice(0, maxLength) + '...' 
+      : property.description;
+
+    return (
+      <div className="bg-white p-4 rounded-xl border border-gray-100">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+          <span className="text-sm font-medium text-gray-700">Описание</span>
+        </div>
+        <div className="text-sm text-gray-600 whitespace-pre-line">
+          {displayText}
+        </div>
+        {property.description.length > maxLength && (
+          <button
+            onClick={toggleDescription}
+            className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            {isDescriptionExpanded ? 'Свернуть' : 'Читать далее'}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get('/users/me');
+        setUser(response.data);
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -194,6 +251,7 @@ export default function PropertyDetailPage() {
           }
         });
         console.log("Property data:", propertyResponse.data);
+        console.log("Price history:", propertyResponse.data.price_history);
         setProperty(propertyResponse.data);
         
         // Проверяем, есть ли объявление в избранном
@@ -216,6 +274,65 @@ export default function PropertyDetailPage() {
     };
     fetchProperty();
   }, [params?.id]);
+
+  // Добавляем функцию для обновления данных
+  const refreshPropertyData = async () => {
+    if (!params?.id) return;
+    try {
+      const propertyResponse = await axios.get(`/properties/${params.id}`, {
+        params: {
+          is_detail_view: true
+        }
+      });
+      setProperty(propertyResponse.data);
+    } catch (err) {
+      console.error("Error refreshing property data:", err);
+    }
+  };
+
+  // Добавляем обработчик изменения цены
+  const handlePriceChange = async (newPrice: number) => {
+    if (!property) return;
+    try {
+      console.log("Отправляем запрос на обновление цены:", newPrice);
+      console.log("Текущая цена:", property.price);
+      const response = await axios.put(`/properties/${property.id}`, {
+        price: newPrice
+      });
+      console.log("Ответ от сервера:", response.data);
+      console.log("Цена успешно обновлена");
+      // Обновляем данные после изменения цены
+      await refreshPropertyData();
+      console.log("Данные обновлены после изменения цены");
+    } catch (err) {
+      console.error("Error updating price:", err);
+      setError("Ошибка при обновлении цены");
+    }
+  };
+
+  // Изменяем обработчик изменения цены
+  const handlePriceUpdate = () => {
+    if (!property) return;
+    setNewPrice(property.price.toString());
+    setShowPriceModal(true);
+  };
+
+  // Добавляем обработчик сохранения новой цены
+  const handleSavePrice = async () => {
+    if (!property) return;
+    
+    const price = parseFloat(newPrice);
+    if (isNaN(price) || price <= 0) {
+      setError("Некорректная цена");
+      return;
+    }
+    
+    console.log("Новая цена:", price);
+    console.log("Текущая цена:", property.price);
+    await handlePriceChange(price);
+    setShowPriceModal(false);
+    setNewPrice('');
+  };
 
   const toggleFavorite = async () => {
     if (!property) return;
@@ -269,100 +386,182 @@ export default function PropertyDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Основная информация (левая колонка) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Заголовок и адрес */}
+            {/* Основная информация с фото и описанием */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              className="bg-white rounded-2xl p-6 shadow-lg overflow-hidden"
             >
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{property.title}</h1>
-              <div className="flex items-center text-gray-600">
-                <FaMapMarkerAlt className="mr-2" />
-                <p>{property.address}</p>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{property.title}</h1>
+                  <div className="flex items-center text-gray-600">
+                    <FaMapMarkerAlt className="mr-2" />
+                    <p>{property.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Карусель изображений */}
+              <div className="relative w-full h-[500px] bg-gray-100 rounded-xl overflow-hidden mb-6">
+                <ImageCarousel
+                  images={property.images.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
+                />
+              </div>
+
+              {/* Описание */}
+              <div className="border-t border-gray-100 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-gray-900">Описание</h3>
+                </div>
+                <div className="text-gray-600 leading-relaxed">
+                  {isDescriptionExpanded ? property.description : property.description?.slice(0, 280)}
+                  {property.description && property.description.length > 280 && (
+                    <>
+                      {!isDescriptionExpanded && (
+                        <span className="text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={toggleDescription}
+                        className="ml-2 text-blue-600 hover:text-blue-700 font-medium text-sm inline-flex items-center gap-0.5"
+                      >
+                        {isDescriptionExpanded ? (
+                          <>
+                            Свернуть
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </>
+                        ) : (
+                          <>
+                            Читать далее
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </motion.div>
 
-            {/* Карусель изображений */}
-            <div className="relative w-full h-[500px] bg-gray-100 rounded-2xl overflow-hidden">
-              <ImageCarousel
-                images={property.images.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
-              />
-            </div>
-
-            {/* Описание объявления */}
+            {/* Основные характеристики */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              className="bg-white rounded-2xl p-6 shadow-lg"
             >
-              <h2 className="text-2xl font-bold mb-6 text-gray-900">Описание объявления</h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-line">{property.description}</p>
-            </motion.div>
-
-            {/* О квартире */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
-            >
-              <h2 className="text-2xl font-bold mb-6 text-gray-900">О квартире</h2>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Тип жилья</span>
-                    <span className="font-semibold text-gray-900">{property.property_type}</span>
+              <h2 className="text-xl font-bold mb-4 text-gray-900">Основные характеристики</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRulerCombined className="text-blue-600" />
                   </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Комнат</span>
-                    <span className="font-semibold text-gray-900">{property.rooms}</span>
+                  <div>
+                    <div className="text-sm text-gray-500">Площадь</div>
+                    <div className="font-medium">{property.area} м²</div>
                   </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Площадь</span>
-                    <span className="font-semibold text-gray-900">{property.area} м²</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Этаж</span>
-                    <span className="font-semibold text-gray-900">
-                      {property.floor === -1 ? "Цокольный" : property.floor} из {property.total_floors}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Балкон</span>
-                    <span className="font-semibold text-gray-900">{property.has_balcony ? "Есть" : "Нет"}</span>
-                  </div>
-                  {property.window_view && property.window_view.length > 0 && (
-                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                      <span className="text-gray-600">Вид из окна</span>
-                      <span className="font-semibold text-gray-900">{property.window_view.join(", ")}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Санузел</span>
-                    <span className="font-semibold text-gray-900">{property.bathroom}</span>
-                  </div>
-                  {property.bath_type && (
-                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                      <span className="text-gray-600">Ванная</span>
-                      <span className="font-semibold text-gray-900">{property.bath_type}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Ремонт</span>
-                    <span className="font-semibold text-gray-900">{property.renovation}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Высота потолков</span>
-                    <span className="font-semibold text-gray-900">{property.ceiling_height} м</span>
-                  </div>
-                  {property.apartment_number && (
-                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                      <span className="text-gray-600">Номер квартиры</span>
-                      <span className="font-semibold text-gray-900">{property.apartment_number}</span>
-                    </div>
-                  )}
                 </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaBed className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Комнат</div>
+                    <div className="font-medium">{property.rooms}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRegListAlt className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Этаж</div>
+                    <div className="font-medium">{property.floor}/{property.total_floors}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaStar className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Ремонт</div>
+                    <div className="font-medium">{property.renovation}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaThermometerHalf className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Отопление</div>
+                    <div className="font-medium">{property.heating}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaBath className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Санузел</div>
+                    <div className="font-medium">{property.bathroom}</div>
+                  </div>
+                </div>
+                {property.bath_type && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                      <FaShower className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-500">Ванная</div>
+                      <div className="font-medium">{property.bath_type}</div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaWindowMaximize className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Балкон</div>
+                    <div className="font-medium">{property.has_balcony ? "Есть" : "Нет"}</div>
+                  </div>
+                </div>
+                {property.window_view && property.window_view.length > 0 && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                      <FaEye className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-500">Вид из окна</div>
+                      <div className="font-medium">{property.window_view.join(", ")}</div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRulerVertical className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Высота потолков</div>
+                    <div className="font-medium">{property.ceiling_height} м</div>
+                  </div>
+                </div>
+                {property.apartment_number && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                      <FaHashtag className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-500">Номер квартиры</div>
+                      <div className="font-medium">{property.apartment_number}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -370,33 +569,58 @@ export default function PropertyDetailPage() {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl p-6 shadow-lg"
             >
-              <h2 className="text-2xl font-bold mb-6 text-gray-900">О доме</h2>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Год постройки</span>
-                  <span className="font-semibold text-gray-900">{property.build_year || "Не указано"}</span>
-                </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Лифты</span>
-                  <span className="font-semibold text-gray-900">
-                    {property.lifts_passenger > 0 && `Пассажирский: ${property.lifts_passenger}`}
-                    {property.lifts_passenger > 0 && property.lifts_freight > 0 && ", "}
-                    {property.lifts_freight > 0 && `Грузовой: ${property.lifts_freight}`}
-                    {property.lifts_passenger === 0 && property.lifts_freight === 0 && "Нет"}
-                  </span>
-                </div>
-                {property.parking && property.parking.length > 0 && (
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Парковка</span>
-                    <span className="font-semibold text-gray-900">{property.parking.join(", ")}</span>
+              <h2 className="text-xl font-bold mb-4 text-gray-900">О доме</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaBuilding className="text-blue-600" />
                   </div>
-                )}
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Отопление</span>
-                  <span className="font-semibold text-gray-900">{property.heating || "Не указано"}</span>
+                  <div>
+                    <div className="text-sm text-gray-500">Тип дома</div>
+                    <div className="font-medium">{property.property_condition}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRegListAlt className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Этажей в доме</div>
+                    <div className="font-medium">{property.total_floors}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRegCalendarAlt className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Год постройки</div>
+                    <div className="font-medium">{property.build_year}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaCar className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Парковка</div>
+                    <div className="font-medium">{property.parking?.join(", ") || "Нет"}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaRegListAlt className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Лифты</div>
+                    <div className="font-medium">
+                      {property.lifts_passenger > 0 && `Пассажирский: ${property.lifts_passenger}`}
+                      {property.lifts_freight > 0 && ` Грузовой: ${property.lifts_freight}`}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -405,53 +629,100 @@ export default function PropertyDetailPage() {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              transition={{ delay: 0.4 }}
+              className="bg-white rounded-2xl p-6 shadow-lg"
             >
-              <h2 className="text-2xl font-bold mb-6 text-gray-900">В квартире есть</h2>
-              <div className="space-y-6">
+              <h2 className="text-xl font-bold mb-6 text-gray-900">В квартире есть</h2>
+              <div className="space-y-4">
                 {property.furniture && property.furniture.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Мебель</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {property.furniture.map((item) => (
-                        <span key={item} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-sm">
-                          {item}
-                        </span>
-                      ))}
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-100"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shadow-sm">
+                      <FaBed className="w-6 h-6 text-blue-600" />
                     </div>
-                  </div>
+                    <div className="ml-5">
+                      <h3 className="font-semibold text-gray-900 mb-1">Мебель</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">{property.furniture.join(", ")}</p>
+                    </div>
+                  </motion.div>
                 )}
-                
                 {property.appliances && property.appliances.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Техника</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {property.appliances.map((item) => (
-                        <span key={item} className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-sm">
-                          {item}
-                        </span>
-                      ))}
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-green-50 to-green-100/50 border border-green-100"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center shadow-sm">
+                      <FaThermometerHalf className="w-6 h-6 text-green-600" />
                     </div>
-                  </div>
+                    <div className="ml-5">
+                      <h3 className="font-semibold text-gray-900 mb-1">Бытовая техника</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {property.appliances.map((appliance, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                            {appliance}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-                
                 {property.connectivity && property.connectivity.length > 0 && (
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-purple-50 to-purple-100/50 border border-purple-100"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center shadow-sm">
+                      <FaWifi className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div className="ml-5">
+                      <h3 className="font-semibold text-gray-900 mb-1">Связь</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {property.connectivity.map((item, index) => (
+                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Условия проживания */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white rounded-2xl p-6 shadow-lg"
+            >
+              <h2 className="text-xl font-bold mb-4 text-gray-900">Условия проживания</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className={`w-8 h-8 rounded-full ${property.living_conditions?.includes("children") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
+                    <FaChild className={property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"} />
+                  </div>
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">Связь</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {property.connectivity.map((item) => (
-                        <span key={item} className="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm">
-                          {item}
-                        </span>
-                      ))}
+                    <div className="text-sm text-gray-500">Можно с детьми</div>
+                    <div className={`font-medium ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`}>
+                      {property.living_conditions?.includes("children") ? "Разрешено" : "Не разрешено"}
                     </div>
                   </div>
-                )}
-
-                {!property.furniture?.length && !property.appliances?.length && !property.connectivity?.length && (
-                  <p className="text-gray-500 text-center">Информация отсутствует</p>
-                )}
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className={`w-8 h-8 rounded-full ${property.living_conditions?.includes("pets") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
+                    <FaPaw className={property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"} />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Домашние животные</div>
+                    <div className={`font-medium ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`}>
+                      {property.living_conditions?.includes("pets") ? "Разрешено" : "Не разрешено"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -466,12 +737,77 @@ export default function PropertyDetailPage() {
             >
               {/* Цена */}
               <div className="mb-8">
-                <div className="flex items-baseline">
-                  <div className="text-2xl font-bold text-blue-600">
+                <div className="flex items-baseline gap-2">
+                  <div className="text-3xl font-bold text-blue-600">
                     {formatPrice(property.price)}
                   </div>
-                  <span className="ml-2 text-gray-500">/ месяц</span>
+                  <span className="text-gray-500">/ месяц</span>
                 </div>
+                {user && user.id === property.owner_id && (
+                  <button
+                    onClick={handlePriceUpdate}
+                    className="mt-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Изменить цену
+                  </button>
+                )}
+
+                {/* Компактная история изменения цены */}
+                {property.price_history && property.price_history.length > 0 && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <div className="text-xs text-gray-500 mb-2 font-medium">История изменения цены</div>
+                    <div className="space-y-2">
+                      {property.price_history.map((history, index, arr) => {
+                        let oldPrice, newPrice;
+                        
+                        if (index === 0) {
+                          // Для первой записи (самой новой):
+                          // - oldPrice берем из предыдущей записи (если есть) или из текущей
+                          // - newPrice берем из текущего состояния объявления
+                          oldPrice = arr[1]?.price || history.price;
+                          newPrice = property.price;
+                        } else {
+                          // Для остальных записей:
+                          // - oldPrice берем из текущей записи
+                          // - newPrice берем из предыдущей записи
+                          oldPrice = history.price;
+                          newPrice = arr[index - 1].price;
+                        }
+
+                        const percentChange = ((newPrice - oldPrice) / oldPrice * 100).toFixed(1);
+                        const date = new Date(history.change_date).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'long'
+                        });
+                        const isIncrease = newPrice > oldPrice;
+
+                        return (
+                          <div key={history.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${isIncrease ? "bg-red-400" : "bg-green-400"}`} />
+                              <span className="text-[13px] tabular-nums">
+                                {Math.floor(oldPrice).toLocaleString()}
+                              </span>
+                              <FaArrowRight className={`w-3 h-3 ${isIncrease ? "text-red-400" : "text-green-400"}`} />
+                              <span className="text-[13px] tabular-nums">
+                                {Math.floor(newPrice).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[13px] font-medium ${isIncrease ? "text-red-500" : "text-green-500"}`}>
+                                {isIncrease ? "+" : ""}{percentChange}%
+                              </span>
+                              <span className="text-[11px] text-gray-400">{date}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Условия */}
@@ -490,35 +826,6 @@ export default function PropertyDetailPage() {
                       <span className="font-medium text-gray-900">{formatPrice(property.deposit)}</span>
                     </div>
                   )}
-                </div>
-
-                {/* Условия проживания */}
-                <div className="border-t border-gray-100 pt-6">
-                  <span className="block text-sm text-gray-500 mb-3">Условия проживания</span>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="flex items-center p-4 rounded-xl bg-gray-50">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${property.living_conditions?.includes("children") ? "bg-green-100" : "bg-red-100"}`}>
-                        <FaChild className={`w-5 h-5 ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`} />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="font-medium text-gray-900">Проживание с детьми</h3>
-                        <p className={`text-sm ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`}>
-                          {property.living_conditions?.includes("children") ? "Разрешено" : "Не разрешено"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center p-4 rounded-xl bg-gray-50">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${property.living_conditions?.includes("pets") ? "bg-green-100" : "bg-red-100"}`}>
-                        <FaPaw className={`w-5 h-5 ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`} />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="font-medium text-gray-900">Домашние животные</h3>
-                        <p className={`text-sm ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`}>
-                          {property.living_conditions?.includes("pets") ? "Разрешено" : "Не разрешено"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Способ связи */}
@@ -588,6 +895,51 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для изменения цены */}
+      {showPriceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Изменить цену</h3>
+              <button
+                onClick={() => setShowPriceModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Новая цена (TJS)
+              </label>
+              <input
+                type="number"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Введите новую цену"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowPriceModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSavePrice}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

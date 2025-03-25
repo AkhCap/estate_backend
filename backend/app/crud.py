@@ -197,8 +197,8 @@ def update_property(db: Session, property_id: int, property_update: schemas.Prop
             # Если цена изменилась, создаем новую запись в истории
             if 'price' in update_data and db_property.price != old_price:
                 print(f"Цена изменилась с {old_price} на {db_property.price}")
-                create_price_history(db, property_id, db_property.price)
-                print(f"Создана новая запись в истории цен: {db_property.price} TJS")
+                create_price_history(db, property_id, old_price)
+                print(f"Создана новая запись в истории цен: {old_price} TJS")
             else:
                 print("Цена не изменилась или не была указана в запросе")
             
