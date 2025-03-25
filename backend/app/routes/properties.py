@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Property, PropertyImage, PropertyViews
 from app import crud, auth, models
@@ -84,9 +84,27 @@ async def get_property(
         if user:
             user_id = user.id
     
-    prop = crud.get_property(db, property_id, user_id)
+    # Загружаем объявление со всеми связанными данными
+    prop = db.query(Property).options(
+        joinedload(Property.images),
+        joinedload(Property.price_history)
+    ).filter(Property.id == property_id).first()
+    
     if not prop:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
+    
+    # По умолчанию устанавливаем is_viewed в False
+    prop.is_viewed = False
+    
+    # Добавляем информацию о просмотре только если:
+    # 1. Пользователь авторизован (user_id не None)
+    # 2. Пользователь не является владельцем объявления
+    if user_id and prop.owner_id != user_id:
+        view = db.query(models.PropertyViews).filter(
+            models.PropertyViews.user_id == user_id,
+            models.PropertyViews.property_id == property_id
+        ).first()
+        prop.is_viewed = view is not None
     
     # Создаем запись в истории и добавляем просмотр только если:
     # 1. Это просмотр детальной страницы

@@ -72,7 +72,10 @@ def get_properties(db: Session, skip: int = 0, limit: int = 10):
 
 # Получение одного объявления по ID
 def get_property(db: Session, property_id: int, user_id: int = None):
-    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
+    prop = db.query(models.Property).options(
+        joinedload(models.Property.price_history)
+    ).filter(models.Property.id == property_id).first()
+    
     if prop:
         # Преобразуем JSON поля в списки
         prop.window_view = prop.window_view or []
@@ -95,6 +98,11 @@ def get_property(db: Session, property_id: int, user_id: int = None):
                 models.PropertyViews.property_id == property_id
             ).first()
             prop.is_viewed = view is not None
+            
+        # Сортируем историю цен по дате изменения (новые сверху)
+        if prop.price_history:
+            prop.price_history.sort(key=lambda x: x.change_date, reverse=True)
+            
     return prop
 
 # Создание объявления
@@ -136,6 +144,10 @@ def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int
     db.add(db_property)
     db.commit()
     db.refresh(db_property)
+    
+    # Создаем первую запись в истории цен
+    create_price_history(db, db_property.id, db_property.price)
+    
     return db_property
 
 # Обновление объявления
@@ -150,6 +162,7 @@ def update_property(db: Session, property_id: int, property_update: schemas.Prop
         # Получаем только установленные значения
         update_data = property_update.model_dump(exclude_unset=True)
         print(f"Данные для обновления: {update_data}")
+        print(f"Текущая цена в БД: {db_property.price}")
         
         # Преобразуем camelCase в snake_case
         field_mapping = {
@@ -165,6 +178,10 @@ def update_property(db: Session, property_id: int, property_update: schemas.Prop
             'buildYear': 'build_year'
         }
         
+        # Сохраняем старую цену для сравнения
+        old_price = db_property.price
+        print(f"Старая цена: {old_price}")
+        
         # Обновляем поля объекта с учетом маппинга
         for key, value in update_data.items():
             # Преобразуем имя поля если оно есть в маппинге
@@ -175,6 +192,16 @@ def update_property(db: Session, property_id: int, property_update: schemas.Prop
         try:
             db.commit()
             db.refresh(db_property)
+            print(f"Новая цена после обновления: {db_property.price}")
+            
+            # Если цена изменилась, создаем новую запись в истории
+            if 'price' in update_data and db_property.price != old_price:
+                print(f"Цена изменилась с {old_price} на {db_property.price}")
+                create_price_history(db, property_id, db_property.price)
+                print(f"Создана новая запись в истории цен: {db_property.price} TJS")
+            else:
+                print("Цена не изменилась или не была указана в запросе")
+            
             print(f"Объявление {property_id} успешно обновлено")
             return db_property
         except Exception as db_error:
@@ -346,3 +373,30 @@ def is_property_viewed(db: Session, user_id: int, property_id: int) -> bool:
     
     # Возвращаем True только если есть и запись о просмотре, и запись в истории
     return view is not None and history is not None
+
+# Работа с историей цен
+def create_price_history(db: Session, property_id: int, price: float) -> models.PriceHistory:
+    db_price_history = models.PriceHistory(
+        property_id=property_id,
+        price=price
+    )
+    db.add(db_price_history)
+    db.commit()
+    db.refresh(db_price_history)
+    return db_price_history
+
+def get_price_history(db: Session, property_id: int, limit: int = 2) -> List[models.PriceHistory]:
+    return db.query(models.PriceHistory)\
+        .filter(models.PriceHistory.property_id == property_id)\
+        .order_by(models.PriceHistory.change_date.desc())\
+        .limit(limit)\
+        .all()
+
+def get_price_change_percentage(db: Session, property_id: int) -> Optional[float]:
+    history = get_price_history(db, property_id, limit=2)
+    if len(history) < 2:
+        return None
+    
+    old_price = history[1].price
+    new_price = history[0].price
+    return ((new_price - old_price) / old_price) * 100

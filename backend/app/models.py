@@ -89,6 +89,7 @@ class Property(Base):
     history = relationship("History", back_populates="property", cascade="all, delete-orphan")
     images = relationship("PropertyImage", back_populates="property", cascade="all, delete", passive_deletes=True)
     property_views = relationship("PropertyViews", back_populates="property", cascade="all, delete-orphan")
+    price_history = relationship("PriceHistory", back_populates="property", cascade="all, delete-orphan")
 
  
 
@@ -151,3 +152,14 @@ class PropertyViews(Base):
 
     user = relationship("User", back_populates="property_views")
     property = relationship("Property", back_populates="property_views")
+
+
+class PriceHistory(Base):
+    __tablename__ = "price_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    price = Column(Float, nullable=False)
+    change_date = Column(DateTime, server_default=func.now())
+
+    property = relationship("Property", back_populates="price_history")

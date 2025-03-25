@@ -67,6 +67,19 @@ class PropertyImageOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class PriceHistoryBase(BaseModel):
+    price: float
+
+class PriceHistoryCreate(PriceHistoryBase):
+    property_id: int
+
+class PriceHistoryOut(PriceHistoryBase):
+    id: int
+    property_id: int
+    change_date: datetime
+
+    model_config = {"from_attributes": True}
+
 class PropertyCreate(BaseModel):
     title: str
     description: str
@@ -140,6 +153,7 @@ class PropertyOut(BaseModel):
     connectivity: List[str] = []
     created_at: datetime
     is_viewed: bool = False
+    price_history: List[PriceHistoryOut] = []
 
     model_config = {"from_attributes": True}
 
