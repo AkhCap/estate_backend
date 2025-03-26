@@ -6,7 +6,7 @@ import Link from "next/link";
 import axios from "../../lib/axios";
 import { formatPrice } from "../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck, FaPlus } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
 // Добавляем базовый URL для изображений
@@ -106,22 +106,30 @@ export default function PropertiesPage() {
         });
         setProperties(propertiesResponse.data);
 
-        try {
-          // Пробуем загрузить данные пользователя и избранное
-          const [userResponse, favoritesResponse] = await Promise.all([
-            axios.get('/users/me'),
-            axios.get('/favorites')
-          ]);
-          setCurrentUserId(userResponse.data.id);
-          const favoritesData = favoritesResponse.data;
-          setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
-          setIsAuthenticated(true);
-        } catch (err) {
-          // Если получаем 401, значит пользователь не авторизован
-          if (err.response?.status === 401) {
-            setIsAuthenticated(false);
-            setCurrentUserId(null);
+        // Проверяем наличие токена в localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            // Пробуем загрузить данные пользователя и избранное
+            const [userResponse, favoritesResponse] = await Promise.all([
+              axios.get('/users/me'),
+              axios.get('/favorites')
+            ]);
+            setCurrentUserId(userResponse.data.id);
+            const favoritesData = favoritesResponse.data;
+            setFavorites(new Set(favoritesData.map((fav: any) => fav.property_id)));
+            setIsAuthenticated(true);
+          } catch (err) {
+            // Если получаем 401, значит токен недействителен
+            if (err.response?.status === 401) {
+              localStorage.removeItem('token');
+              setIsAuthenticated(false);
+              setCurrentUserId(null);
+            }
           }
+        } else {
+          setIsAuthenticated(false);
+          setCurrentUserId(null);
         }
       } catch (err: any) {
         setError(err.response?.data?.detail || "Ошибка при загрузке данных");
@@ -187,7 +195,14 @@ export default function PropertiesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Заголовок и фильтры */}
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">Объявления</h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-6">Объявления</h1>
+            <Link href="/create-property">
+              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <FaPlus /> Добавить объявление
+              </button>
+            </Link>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <select className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">

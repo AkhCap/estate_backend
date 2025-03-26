@@ -152,64 +152,26 @@ def create_property(db: Session, property: schemas.PropertyCreate, owner_id: int
 
 # Обновление объявления
 def update_property(db: Session, property_id: int, property_update: schemas.PropertyUpdate) -> Optional[models.Property]:
-    try:
-        print(f"Начинаем обновление объявления {property_id}")
-        db_property = get_property(db, property_id)
-        if not db_property:
-            print(f"Объявление {property_id} не найдено")
-            return None
+    db_property = get_property(db, property_id)
+    if not db_property:
+        return None
 
-        # Получаем только установленные значения
-        update_data = property_update.model_dump(exclude_unset=True)
-        print(f"Данные для обновления: {update_data}")
-        print(f"Текущая цена в БД: {db_property.price}")
-        
-        # Преобразуем camelCase в snake_case
-        field_mapping = {
-            'windowView': 'window_view',
-            'hasBalcony': 'has_balcony',
-            'bathType': 'bath_type',
-            'propertyCondition': 'property_condition',
-            'liftsPassenger': 'lifts_passenger',
-            'liftsFreight': 'lifts_freight',
-            'livingConditions': 'living_conditions',
-            'landlordContact': 'landlord_contact',
-            'contactMethod': 'contact_method',
-            'buildYear': 'build_year'
-        }
-        
-        # Сохраняем старую цену для сравнения
+    # Сначала сохраняем старую цену в историю, если цена изменилась
+    if 'price' in property_update.dict(exclude_unset=True) and property_update.price != db_property.price:
         old_price = db_property.price
-        print(f"Старая цена: {old_price}")
-        
-        # Обновляем поля объекта с учетом маппинга
-        for key, value in update_data.items():
-            # Преобразуем имя поля если оно есть в маппинге
-            db_field = field_mapping.get(key, key)
-            print(f"Обновляем поле {key} -> {db_field}: {value}")
-            setattr(db_property, db_field, value)
+        create_price_history(db, property_id, old_price)
 
-        try:
-            db.commit()
-            db.refresh(db_property)
-            print(f"Новая цена после обновления: {db_property.price}")
-            
-            # Если цена изменилась, создаем новую запись в истории
-            if 'price' in update_data and db_property.price != old_price:
-                print(f"Цена изменилась с {old_price} на {db_property.price}")
-                create_price_history(db, property_id, old_price)
-                print(f"Создана новая запись в истории цен: {old_price} TJS")
-            else:
-                print("Цена не изменилась или не была указана в запросе")
-            
-            print(f"Объявление {property_id} успешно обновлено")
-            return db_property
-        except Exception as db_error:
-            print(f"Ошибка при сохранении в БД: {db_error}")
-            db.rollback()
-            raise
-    except Exception as e:
-        print(f"Ошибка в update_property: {e}")
+    # Обновляем поля объявления
+    update_data = property_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_property, field, value)
+
+    try:
+        db.commit()
+        db.refresh(db_property)
+        return db_property
+    except Exception as db_error:
+        print(f"Ошибка при сохранении в БД: {db_error}")
         db.rollback()
         raise
 

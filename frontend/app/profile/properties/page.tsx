@@ -145,7 +145,7 @@ export default function MyPropertiesPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Мои объявления</h1>
-        <Link href="/properties/create">
+        <Link href="/create-property">
           <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
             <FaPlus /> Добавить объявление
           </button>
@@ -238,7 +238,7 @@ export default function MyPropertiesPage() {
         {properties.length === 0 && (
           <div className="text-center py-12 bg-gray-50 rounded-xl">
             <p className="text-gray-600 mb-4">У вас пока нет объявлений</p>
-            <Link href="/properties/create">
+            <Link href="/create-property">
               <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
                 <FaPlus /> Создать первое объявление
               </button>

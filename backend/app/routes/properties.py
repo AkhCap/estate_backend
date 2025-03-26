@@ -5,7 +5,7 @@ from app.models import Property, PropertyImage, PropertyViews
 from app import crud, auth, models
 import shutil
 import os
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import uuid
 
@@ -71,7 +71,7 @@ async def get_property(
     property_id: int, 
     is_detail_view: bool = False,
     db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_optional_current_user)
+    current_user: Optional[str] = Depends(auth.get_optional_current_user)
 ):
     """
     Получение детальной информации об объявлении.

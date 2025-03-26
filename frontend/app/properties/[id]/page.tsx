@@ -1,6 +1,7 @@
 // Файл: app/properties/page.tsx
 "use client";
 
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
@@ -75,7 +76,11 @@ interface User {
   properties_count: number;
 }
 
-const ImageGallery = ({ images }) => {
+interface ImageGalleryProps {
+  images: string[];
+}
+
+const ImageGallery: React.FC<ImageGalleryProps> = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
 
@@ -180,7 +185,7 @@ const ImageGallery = ({ images }) => {
   );
 };
 
-export default function PropertyDetailPage() {
+const PropertyDetailPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
@@ -193,6 +198,9 @@ export default function PropertyDetailPage() {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [newPrice, setNewPrice] = useState<string>('');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isPriceHistoryExpanded, setIsPriceHistoryExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const toggleDescription = () => {
     setIsDescriptionExpanded(!isDescriptionExpanded);
@@ -229,51 +237,45 @@ export default function PropertyDetailPage() {
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get('/users/me');
-        setUser(response.data);
-      } catch (err) {
-        console.error('Error fetching user:', err);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  useEffect(() => {
-    const fetchProperty = async () => {
-      if (!params?.id) return;
-      try {
-        console.log("Fetching property with ID:", params.id);
+        // Загружаем данные объявления
         const propertyResponse = await axios.get(`/properties/${params.id}`, {
           params: {
             is_detail_view: true
           }
         });
-        console.log("Property data:", propertyResponse.data);
-        console.log("Price history:", propertyResponse.data.price_history);
         setProperty(propertyResponse.data);
-        
-        // Проверяем, есть ли объявление в избранном
-        try {
-          const favoritesResponse = await axios.get('/favorites');
-          const favorites = favoritesResponse.data;
-          setIsFavorite(favorites.some((fav: any) => fav.property_id === propertyResponse.data.id));
-          setIsAuthenticated(true);
-        } catch (err) {
-          if (err.response?.status === 401) {
-            setIsAuthenticated(false);
-          } else {
-            console.error('Ошибка при проверке избранного:', err);
+
+        // Проверяем наличие токена в localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            // Пробуем загрузить данные пользователя
+            const userResponse = await axios.get('/users/me');
+            setCurrentUserId(userResponse.data.id);
+            setIsAuthenticated(true);
+          } catch (err) {
+            // Если получаем 401, значит токен недействителен
+            if (err.response?.status === 401) {
+              localStorage.removeItem('token');
+              setIsAuthenticated(false);
+              setCurrentUserId(null);
+            }
           }
+        } else {
+          setIsAuthenticated(false);
+          setCurrentUserId(null);
         }
       } catch (err: any) {
-        console.error("Error fetching property:", err);
         setError(err.response?.data?.detail || "Ошибка при загрузке данных");
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchProperty();
-  }, [params?.id]);
+    fetchData();
+  }, [params.id]);
 
   // Добавляем функцию для обновления данных
   const refreshPropertyData = async () => {
@@ -743,7 +745,7 @@ export default function PropertyDetailPage() {
                   </div>
                   <span className="text-gray-500">/ месяц</span>
                 </div>
-                {user && user.id === property.owner_id && (
+                {currentUserId === property.owner_id && (
                   <button
                     onClick={handlePriceUpdate}
                     className="mt-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
@@ -755,57 +757,70 @@ export default function PropertyDetailPage() {
                   </button>
                 )}
 
-                {/* Компактная история изменения цены */}
+                {/* История изменения цены */}
                 {property.price_history && property.price_history.length > 0 && (
                   <div className="mt-3 border-t border-gray-100 pt-3">
-                    <div className="text-xs text-gray-500 mb-2 font-medium">История изменения цены</div>
-                    <div className="space-y-2">
-                      {property.price_history.map((history, index, arr) => {
-                        let oldPrice, newPrice;
-                        
-                        if (index === 0) {
-                          // Для первой записи (самой новой):
-                          // - oldPrice берем из предыдущей записи (если есть) или из текущей
-                          // - newPrice берем из текущего состояния объявления
-                          oldPrice = arr[1]?.price || history.price;
-                          newPrice = property.price;
-                        } else {
-                          // Для остальных записей:
-                          // - oldPrice берем из текущей записи
-                          // - newPrice берем из предыдущей записи
-                          oldPrice = history.price;
-                          newPrice = arr[index - 1].price;
-                        }
-
-                        const percentChange = ((newPrice - oldPrice) / oldPrice * 100).toFixed(1);
-                        const date = new Date(history.change_date).toLocaleDateString('ru-RU', {
-                          day: 'numeric',
-                          month: 'long'
-                        });
-                        const isIncrease = newPrice > oldPrice;
-
-                        return (
-                          <div key={history.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${isIncrease ? "bg-red-400" : "bg-green-400"}`} />
-                              <span className="text-[13px] tabular-nums">
-                                {Math.floor(oldPrice).toLocaleString()}
-                              </span>
-                              <FaArrowRight className={`w-3 h-3 ${isIncrease ? "text-red-400" : "text-green-400"}`} />
-                              <span className="text-[13px] tabular-nums">
-                                {Math.floor(newPrice).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[13px] font-medium ${isIncrease ? "text-red-500" : "text-green-500"}`}>
-                                {isIncrease ? "+" : ""}{percentChange}%
-                              </span>
-                              <span className="text-[11px] text-gray-400">{date}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs text-gray-500 font-medium">История изменения цены</div>
+                      <button
+                        onClick={() => setIsPriceHistoryExpanded(!isPriceHistoryExpanded)}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                      >
+                        {isPriceHistoryExpanded ? 'Свернуть' : 'Развернуть'}
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className={`h-3 w-3 transform transition-transform ${isPriceHistoryExpanded ? 'rotate-180' : ''}`} 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     </div>
+                    <AnimatePresence>
+                      {isPriceHistoryExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="space-y-2 overflow-hidden"
+                        >
+                          {[...property.price_history].reverse().map((history, index, arr) => {
+                            const oldPrice = history.price;
+                            const newPrice = index === 0 ? property.price : arr[index - 1].price;
+                            const percentChange = ((newPrice - oldPrice) / oldPrice * 100).toFixed(1);
+                            const date = new Date(history.change_date).toLocaleDateString('ru-RU', {
+                              day: 'numeric',
+                              month: 'long'
+                            });
+                            const isIncrease = newPrice > oldPrice;
+
+                            return (
+                              <div key={history.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${isIncrease ? "bg-red-400" : "bg-green-400"}`} />
+                                  <span className="text-[13px] tabular-nums">
+                                    {Math.floor(oldPrice).toLocaleString()} TJS
+                                  </span>
+                                  <FaArrowRight className={`w-3 h-3 ${isIncrease ? "text-red-400" : "text-green-400"}`} />
+                                  <span className="text-[13px] tabular-nums">
+                                    {Math.floor(newPrice).toLocaleString()} TJS
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[13px] font-medium ${isIncrease ? "text-red-500" : "text-green-500"}`}>
+                                    {isIncrease ? "+" : ""}{percentChange}%
+                                  </span>
+                                  <span className="text-[11px] text-gray-400">{date}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
               </div>
@@ -942,4 +957,6 @@ export default function PropertyDetailPage() {
       )}
     </div>
   );
-}
+};
+
+export default PropertyDetailPage;
