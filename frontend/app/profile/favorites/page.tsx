@@ -51,14 +51,15 @@ const container = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      duration: 0.3,
+      staggerChildren: 0.05
     }
   }
 };
 
 const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
+  hidden: { opacity: 0 },
+  show: { opacity: 1 }
 };
 
 const formatDate = (dateString: string) => {
@@ -99,16 +100,9 @@ export default function FavoritesPage() {
           axios.get('/favorites')
         ]);
         setCurrentUserId(userResponse.data.id);
-        const favoriteProperties = await Promise.all(
-          favoritesResponse.data.map(async (fav: any) => {
-            const propertyResponse = await axios.get(`/properties/${fav.property_id}`, {
-              params: {
-                is_detail_view: false
-              }
-            });
-            return propertyResponse.data;
-          })
-        );
+        
+        // Получаем свойства из ответа API
+        const favoriteProperties = favoritesResponse.data.map((fav: any) => fav.property || {});
         setFavorites(favoriteProperties);
       } catch (err: any) {
         setError(err.response?.data?.detail || "Ошибка при загрузке избранного");
@@ -249,10 +243,10 @@ export default function FavoritesPage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         {filteredAndSortedFavorites.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl">
+          <div className="col-span-2 text-center py-12 bg-white rounded-2xl">
             <p className="text-gray-600">По вашему запросу ничего не найдено</p>
           </div>
         ) : (
@@ -264,67 +258,61 @@ export default function FavoritesPage() {
             >
               <Link href={`/properties/${property.id}`}>
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                  <div className="flex flex-col md:flex-row">
-                    {/* Изображение */}
-                    <div className="relative h-[200px]">
-                      <img
-                        src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
-                        alt={property.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/no-image.jpg';
-                        }}
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                        <p className="text-white text-xl font-bold">
-                          {formatPrice(property.price)}
-                        </p>
+                  {/* Изображение */}
+                  <div className="relative h-[200px] w-full overflow-hidden bg-gray-100">
+                    <img
+                      src={property.images && property.images.length > 0 && property.images[0].image_url 
+                        ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
+                        : "/images/placeholder.png"}
+                      alt={property.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/images/photo1.jpg';
+                        target.onerror = null;
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                      <p className="text-white text-xl font-bold">
+                        {formatPrice(property.price)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Информация */}
+                  <div className="p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
+                      {property.title}
+                    </h3>
+                    <div className="flex items-center text-gray-600 mb-4">
+                      <FaMapMarkerAlt className="mr-2 flex-shrink-0" />
+                      <p className="text-sm line-clamp-1">{property.address}</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-gray-600 mb-3">
+                      <div className="flex items-center gap-1">
+                        <FaBed className="w-4 h-4" />
+                        <span>{property.rooms} комнат</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FaRulerCombined className="w-4 h-4" />
+                        <span>Площадь: {property.area} м²</span>
                       </div>
                     </div>
 
-                    {/* Информация */}
-                    <div className="flex-1 p-6">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
-                            {property.title}
-                          </h3>
-                          <div className="flex items-center text-gray-600 mb-4">
-                            <FaMapMarkerAlt className="mr-2" />
-                            <p className="text-sm line-clamp-1">{property.address}</p>
-                          </div>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {formatPrice(property.price)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-gray-600 mb-3">
-                        <div className="flex items-center gap-1">
-                          <FaBed className="w-4 h-4" />
-                          <span>{property.rooms} комнат</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FaRulerCombined className="w-4 h-4" />
-                          <span>Площадь: {property.area} м²</span>
-                        </div>
-                      </div>
-
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center text-sm text-gray-500">
                         <FaRegCalendarAlt className="w-4 h-4 mr-2" />
                         <span>Создано: {formatDate(property.created_at)}</span>
                       </div>
 
-                      <div className="flex items-center justify-end">
-                        <button
-                          onClick={(e) => removeFavorite(property.id, e)}
-                          className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl transition-colors duration-200"
-                        >
-                          <FaHeart className="mr-2" />
-                          Убрать из избранного
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => removeFavorite(property.id, e)}
+                        className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl transition-colors duration-200"
+                      >
+                        <FaHeart className="mr-1" />
+                        Убрать
+                      </button>
                     </div>
                   </div>
                 </div>

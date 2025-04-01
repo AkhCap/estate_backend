@@ -72,14 +72,18 @@ export default function PropertyCard({ property, index, favorites, onToggleFavor
       <Link href={`/properties/${property.id}`}>
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
           {/* Изображение */}
-          <div className="relative h-64">
+          <div className="relative h-64 overflow-hidden bg-gray-100">
             <img
-              src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
+              src={property.images && property.images.length > 0 && property.images[0].image_url 
+                ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
+                : "/images/placeholder.png"}
               alt={property.title}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-cover"
+              loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/no-image.jpg';
+                target.src = '/images/photo1.jpg';
+                target.onerror = null; // Предотвращаем бесконечный цикл
               }}
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">

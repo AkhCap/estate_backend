@@ -163,14 +163,18 @@ export default function MyPropertiesPage() {
               <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                 <div className="flex flex-col md:flex-row">
                   {/* Изображение */}
-                  <div className="relative md:w-72 aspect-[4/3] md:aspect-auto">
+                  <div className="relative md:w-72 aspect-[4/3] md:aspect-auto overflow-hidden bg-gray-100">
                     <img
-                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
+                      src={property.images && property.images.length > 0 && property.images[0].image_url 
+                        ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
+                        : "/images/photo1.jpg"}
                       alt={property.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = '/no-image.jpg';
+                        target.src = '/images/photo1.jpg';
+                        target.onerror = null;
                       }}
                     />
                   </div>

@@ -36,14 +36,15 @@ const container = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      duration: 0.3,
+      staggerChildren: 0.05
     }
   }
 };
 
 const itemAnimation = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
+  hidden: { opacity: 0 },
+  show: { opacity: 1 }
 };
 
 const formatDate = (dateString: string) => {
@@ -365,18 +366,20 @@ export default function HistoryPage() {
               className="group relative"
             >
               <Link href={`/properties/${item.property.id}`}>
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                   {/* Изображение */}
-                  <div className="relative h-[200px]">
+                  <div className="relative h-[200px] w-full overflow-hidden bg-gray-100">
                     <img
-                      src={item.property.images && item.property.images.length > 0 
-                        ? `${BASE_URL}/uploads/properties/${item.property.images[0].image_url}` 
-                        : "/no-image.jpg"}
+                      src={item.property.images && item.property.images.length > 0 && item.property.images[0].image_url 
+                        ? `${BASE_URL}/uploads/properties/${item.property.images[0].image_url}`
+                        : "/images/photo1.jpg"}
                       alt={item.property.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover"
+                      loading="lazy"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = '/no-image.jpg';
+                        target.src = '/images/photo1.jpg';
+                        target.onerror = null;
                       }}
                     />
                     {item.property.is_viewed && item.property.owner_id !== currentUserId && (
