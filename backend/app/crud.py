@@ -2,6 +2,10 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app import models, schemas
 from typing import Optional, List
 from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException, status
+from sqlalchemy import func, desc, distinct
+from . import auth
+import logging
 
 # Получение пользователя по email
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -14,7 +18,6 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
 def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> models.User:
     db_user = models.User(
         email=user.email,
-        username=user.username,
         hashed_password=hashed_password,
         role="private",  # Устанавливаем значение по умолчанию
         first_name=user.first_name,
@@ -204,7 +207,12 @@ def add_to_favorites(db: Session, user_id: int, property_id: int) -> Optional[mo
     return fav
 
 def get_favorites(db: Session, user_id: int) -> List[models.Favorite]:
-    return db.query(models.Favorite).filter(models.Favorite.user_id == user_id).all()
+    return db.query(models.Favorite)\
+        .filter(models.Favorite.user_id == user_id)\
+        .options(
+            joinedload(models.Favorite.property).joinedload(models.Property.images)
+        )\
+        .all()
 
 def remove_from_favorites(db: Session, user_id: int, property_id: int) -> Optional[models.Favorite]:
     favorite = get_favorite_by_user_and_property(db, user_id, property_id)

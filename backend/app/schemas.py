@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from enum import Enum
 
 # 🔹 ENUM для типа сделки
@@ -17,7 +17,6 @@ class UserRole(str, Enum):
 # 🔹 Базовая схема пользователя
 class UserBase(BaseModel):
     email: EmailStr
-    username: str
 
 # 🔹 Схема регистрации пользователя
 class UserCreate(UserBase):
@@ -204,6 +203,7 @@ class FavoriteOut(BaseModel):
     id: int
     property_id: int
     created_at: datetime
+    property: Optional[PropertyOut] = None
 
     model_config = {"from_attributes": True}
 

@@ -8,13 +8,17 @@ from alembic import context
 # Загружаем переменные окружения из .env
 load_dotenv()
 
-# Получаем строку подключения к БД из .env
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL не найден в переменных окружения! Убедись, что .env файл существует и содержит DATABASE_URL.")
-
 # Alembic Config object, который предоставляет доступ к настройкам
 config = context.config
+
+# Получаем строку подключения к БД из .env или из alembic.ini
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = config.get_main_option("sqlalchemy.url")
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL не найден в переменных окружения или в alembic.ini! Пожалуйста, настройте подключение к базе данных.")
+
+# Устанавливаем URL в конфигурацию
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Настройка логирования, если файл конфигурации существует
@@ -40,7 +44,10 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Запуск миграций в онлайн-режиме."""
-    connectable = create_engine(DATABASE_URL, poolclass=pool.NullPool)
+    connectable = create_engine(
+        config.get_main_option("sqlalchemy.url"), 
+        poolclass=pool.NullPool
+    )
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
