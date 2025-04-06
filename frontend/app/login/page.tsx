@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "../../lib/axios";
 import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -12,6 +13,7 @@ export default function LoginPage() {
     password: ""
   });
   const [error, setError] = useState("");
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,13 +29,28 @@ export default function LoginPage() {
       });
       
       if (response.data.access_token) {
-        localStorage.setItem("token", response.data.access_token);
-        window.dispatchEvent(new Event('authStateChanged'));
+        const token = response.data.access_token;
+        
+        // Получаем данные пользователя
+        const userResponse = await axios.get("/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        // Сохраняем данные пользователя и токен
+        login({
+          id: userResponse.data.id,
+          email: userResponse.data.email,
+          name: userResponse.data.name || userResponse.data.email,
+        }, token);
+        
         router.push("/");
       } else {
         setError("Не получен токен доступа");
       }
     } catch (err: any) {
+      console.error("Ошибка входа:", err);
       const errorMessage = err.response?.data?.detail || err.message || "Неизвестная ошибка";
       setError("Ошибка входа: " + errorMessage);
     }

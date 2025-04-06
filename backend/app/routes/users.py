@@ -4,10 +4,13 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
 from datetime import timedelta
+import logging
+from pydantic import BaseModel
 
 from app import schemas, models, crud, auth
-from app.database import SessionLocal, engine
+from app.database import SessionLocal, engine, get_db
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Инициализируем базу данных (если необходимо)
@@ -25,6 +28,11 @@ def get_db():
     finally:
         db.close()
 
+# Модель для входа
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 # --- Регистрация и логин ---
 
 @router.post("/register", response_model=schemas.UserOut)
@@ -40,20 +48,27 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    if not user or not auth.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный email или пароль",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        print(f"Получены данные для входа: username={form_data.username}, password=***")  # Логируем полученные данные
+        
+        user = crud.authenticate_user(db, form_data.username, form_data.password)
+        if not user:
+            print("Пользователь не найден или неверный пароль")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверный email или пароль",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        print(f"Пользователь найден: {user.email}")
+        access_token = auth.create_access_token(
+            data={"sub": user.email},
+            expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-
-    access_token = auth.create_access_token(
-        data={"sub": user.email},
-        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        print(f"Ошибка при входе: {str(e)}")
+        logger.error(f"Ошибка при входе: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Профиль пользователя ---
 
@@ -227,3 +242,20 @@ def clear_history(
     db.commit()
     
     return {"detail": "История просмотров очищена"}
+
+# --- НОВЫЙ ЭНДПОИНТ: Получение публичной информации о пользователе по ID --- 
+@router.get("/{user_id}", response_model=schemas.UserPublicOut) # Используем новую схему
+async def get_user_public_profile(user_id: int, db: Session = Depends(get_db)):
+    """
+    Возвращает публичную информацию о пользователе по его ID.
+    Не требует аутентификации.
+    """
+    logger.info(f"Fetching public profile for user_id: {user_id}")
+    user = crud.get_user(db, user_id=user_id) # Предполагаем, что есть crud.get_user
+    if not user:
+        logger.warning(f"Public profile requested for non-existent user_id: {user_id}")
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Важно: Не возвращайте email, пароль и т.д.!
+    # Используйте специальную Pydantic схему UserPublicOut
+    return schemas.UserPublicOut.model_validate(user)

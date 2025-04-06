@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Property, PropertyImage, PropertyViews
@@ -22,30 +22,55 @@ if not os.path.exists(UPLOAD_DIR):
 @router.get("/list", response_model=List[PropertyOut])
 async def get_properties_list(
     db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_optional_current_user)
+    current_user: str = Depends(auth.get_optional_current_user),
+    limit: Optional[int] = None,
+    include_viewed: bool = False
 ):
     """
     Получение списка объявлений.
     Доступно без аутентификации.
     """
-    user_id = None
-    if current_user:
-        user = crud.get_user_by_email(db, email=current_user)
-        if user:
-            user_id = user.id
-    
-    properties = db.query(Property).all()
-    for prop in properties:
-        # По умолчанию устанавливаем is_viewed в False
-        prop.is_viewed = False
+    try:
+        print("Starting get_properties_list function")
+        user_id = None
+        if current_user:
+            print(f"Current user: {current_user}")
+            user = crud.get_user_by_email(db, email=current_user)
+            if user:
+                user_id = user.id
+                print(f"User ID: {user_id}")
         
-        if user_id:
-            # Используем функцию is_property_viewed, которая проверяет:
-            # 1. Пользователь не является владельцем
-            # 2. Есть запись в таблице property_views
-            prop.is_viewed = crud.is_property_viewed(db, user_id, prop.id)
-    
-    return [PropertyOut.model_validate(prop) for prop in properties]
+        print("Querying properties")
+        query = db.query(Property).options(
+            joinedload(Property.images),
+            joinedload(Property.price_history)
+        )
+        
+        if limit:
+            print(f"Applying limit: {limit}")
+            query = query.limit(limit)
+        
+        properties = query.all()
+        print(f"Found {len(properties)} properties")
+        
+        for prop in properties:
+            # По умолчанию устанавливаем is_viewed в False
+            prop.is_viewed = False
+            
+            if user_id and include_viewed:
+                print(f"Checking if property {prop.id} is viewed by user {user_id}")
+                # Используем функцию is_property_viewed, которая проверяет:
+                # 1. Пользователь не является владельцем
+                # 2. Есть запись в таблице property_views
+                prop.is_viewed = crud.is_property_viewed(db, user_id, prop.id)
+        
+        print("Converting properties to response model")
+        result = [PropertyOut.model_validate(prop) for prop in properties]
+        print("Successfully converted properties")
+        return result
+    except Exception as e:
+        print(f"Error in get_properties_list: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=PropertyOut)
 async def create_property(
@@ -68,7 +93,7 @@ async def create_property(
 
 @router.get("/{property_id}", response_model=PropertyOut)
 async def get_property(
-    property_id: int, 
+    property_id: str, 
     is_detail_view: bool = False,
     db: Session = Depends(get_db),
     current_user: Optional[str] = Depends(auth.get_optional_current_user)
@@ -84,10 +109,11 @@ async def get_property(
         if user:
             user_id = user.id
     
-    # Загружаем объявление со всеми связанными данными
+    # Загружаем объявление со всеми связанными данными, включая владельца
     prop = db.query(Property).options(
         joinedload(Property.images),
-        joinedload(Property.price_history)
+        joinedload(Property.price_history),
+        joinedload(Property.owner)
     ).filter(Property.id == property_id).first()
     
     if not prop:

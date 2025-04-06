@@ -6,3 +6,8 @@ class PropertyTypeEnum(str, enum.Enum):
     house = "дом"
     new_building = "новостройка"
     plot = "участок"
+
+# Добавляем недостающий Enum
+class DealTypeEnum(str, enum.Enum):  
+    SALE = "sale"
+    RENT = "rent"
