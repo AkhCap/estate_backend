@@ -28,6 +28,9 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       window.location.href = "/login";
+    } else if (error.response?.status === 404) {
+      // Перенаправляем на страницу 404
+      window.location.href = "/404";
     }
     return Promise.reject(error);
   }

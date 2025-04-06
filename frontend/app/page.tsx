@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaHome, FaBuilding, FaHotel, FaBed, FaRulerCombined, FaMoneyBillWave, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck } from "react-icons/fa";
+import { FaSearch, FaHome, FaBuilding, FaHotel, FaBed, FaRulerCombined, FaMoneyBillWave, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck, FaEye } from "react-icons/fa";
 import { formatPrice } from "../lib/utils";
 import { useRouter } from "next/navigation";
 import PropertyCard from "../components/PropertyCard";
@@ -125,14 +125,16 @@ export default function HomePage() {
           }
         });
         
-        // Добавляем отладочный вывод
-        console.log('Properties data:', response.data.map(p => ({
-          id: p.id,
-          is_viewed: p.is_viewed,
-          owner_id: p.owner_id
-        })));
+        // Получаем сохраненные просмотры из localStorage
+        const viewedProperties = JSON.parse(localStorage.getItem('viewedProperties') || '{}');
         
-        setProperties(response.data);
+        // Сохраняем данные с учетом статуса просмотра
+        const propertiesWithViewed = response.data.map(property => ({
+          ...property,
+          is_viewed: property.is_viewed || viewedProperties[property.id] || false
+        }));
+        
+        setProperties(propertiesWithViewed);
 
         // Проверяем авторизацию и загружаем избранное
         const token = localStorage.getItem("token");
@@ -196,7 +198,7 @@ export default function HomePage() {
     const searchParams = new URLSearchParams();
     
     for (const [key, value] of formData.entries()) {
-      if (value) {
+      if (value && typeof value === 'string') {
         searchParams.append(key, value);
       }
     }
@@ -236,6 +238,23 @@ export default function HomePage() {
         router.push('/login');
       }
     }
+  };
+
+  // Добавляем обработчик клика по карточке
+  const handlePropertyClick = (propertyId: number) => {
+    // Обновляем статус просмотра в localStorage
+    const viewedProperties = JSON.parse(localStorage.getItem('viewedProperties') || '{}');
+    viewedProperties[propertyId] = true;
+    localStorage.setItem('viewedProperties', JSON.stringify(viewedProperties));
+    
+    // Обновляем состояние
+    setProperties(prevProperties => 
+      prevProperties.map(property => 
+        property.id === propertyId 
+          ? { ...property, is_viewed: true }
+          : property
+      )
+    );
   };
 
   if (loading) {
@@ -545,6 +564,7 @@ export default function HomePage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="group relative"
+                    onClick={() => handlePropertyClick(property.id)}
                   >
                     <Link href={`/properties/${property.id}`}>
                       <div className="bg-white rounded-xl shadow-md overflow-hidden">

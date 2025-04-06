@@ -7,8 +7,10 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw, FaArrowRight, FaBath, FaShower, FaWindowMaximize, FaHashtag, FaEye, FaRulerVertical, FaWifi, FaUser } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw, FaArrowRight, FaBath, FaShower, FaWindowMaximize, FaHashtag, FaEye, FaRulerVertical, FaWifi, FaUser, FaComments, FaShare, FaPhone, FaEnvelope } from "react-icons/fa";
 import ImageCarousel from "../../../components/ImageCarousel";
+import Link from "next/link";
+import chatAxiosInstance from "@/lib/chatAxios";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -255,6 +257,13 @@ const PropertyDetailPage: React.FC = () => {
             const userResponse = await axios.get('/users/me');
             setCurrentUserId(userResponse.data.id);
             setIsAuthenticated(true);
+            
+            // Проверяем, находится ли объявление в избранном
+            const favoritesResponse = await axios.get('/favorites');
+            const isInFavorites = favoritesResponse.data.some(
+              (favorite: any) => favorite.property_id === propertyResponse.data.id
+            );
+            setIsFavorite(isInFavorites);
           } catch (err) {
             // Если получаем 401, значит токен недействителен
             if (err.response?.status === 401) {
@@ -366,6 +375,42 @@ const PropertyDetailPage: React.FC = () => {
       return;
     }
     setShowPhone(true);
+  };
+
+  const handleStartChat = async () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    if (!property || !currentUserId) {
+      console.error('Данные объявления или пользователя не загружены');
+      return;
+    }
+
+    console.log(`[handleStartChat] Starting chat for property ${property.id} between user ${currentUserId} and owner ${property.owner_id}`);
+
+    try {
+      const response = await chatAxiosInstance.post('/chats', {
+        property_id: property.id,
+        participants: [currentUserId, property.owner_id]
+      });
+
+      console.log("[handleStartChat] Chat creation response:", response);
+
+      if (response.data && response.data.id) {
+        const chatId = response.data.id;
+        console.log(`[handleStartChat] Chat created/found with ID: ${chatId}. Redirecting...`);
+        router.push(`/chat/${chatId}`);
+        } else {
+        console.error('[handleStartChat] Некорректный ответ от сервера при создании чата:', response.data);
+        alert("Не удалось получить ID чата от сервера.");
+      }
+    } catch (error: any) {
+      console.error('[handleStartChat] Ошибка при создании/получении чата:', error);
+      const errorMessage = error.response?.data?.detail || error.message || "Неизвестная ошибка";
+      alert(`Ошибка при попытке начать чат: ${errorMessage}`);
+    }
   };
 
   if (error) return (
@@ -886,12 +931,16 @@ const PropertyDetailPage: React.FC = () => {
                     )}
                   </button>
 
-                  <button
-                    onClick={() => {/* TODO: Добавить функционал чата */}}
-                    className="w-full bg-white text-blue-600 py-3.5 px-6 rounded-xl font-medium border-2 border-blue-600 hover:bg-blue-50 transition-colors duration-200 flex items-center justify-center"
-                  >
-                    Написать
-                  </button>
+                  {/* Показываем кнопку "Написать" только если пользователь не владелец объявления */}
+                  {currentUserId !== property.owner_id && (
+                    <button
+                      onClick={handleStartChat}
+                      className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center gap-2"
+                    >
+                      <FaComments size={20} />
+                      <span>Написать</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={toggleFavorite}
@@ -955,6 +1004,14 @@ const PropertyDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Заменяем кнопку чата на ссылку */}
+      <Link
+        href={`/chat/${params.id}`}
+        className="fixed bottom-4 right-4 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 transition-colors z-50"
+      >
+        <FaComments className="text-xl" />
+      </Link>
     </div>
   );
 };

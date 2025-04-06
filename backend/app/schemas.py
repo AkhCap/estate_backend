@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from enum import Enum
+from app.enums import DealTypeEnum, PropertyTypeEnum
 
 # 🔹 ENUM для типа сделки
 class DealType(str, Enum):
@@ -33,15 +34,33 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 # 🔹 Схема вывода данных о пользователе
-class UserOut(BaseModel):
+class UserOut(UserBase):
     id: int
-    email: EmailStr
+    role: str
+    is_active: bool
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
-    is_active: bool
+    
+    model_config = {"from_attributes": True}
+    
+# --- Новая схема для публичного профиля --- 
+class UserPublicOut(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    # Добавьте другие публичные поля, если нужно (например, рейтинг, дата регистрации)
+    
+    model_config = {"from_attributes": True}
 
+# Перемещаем определение PropertyOwnerOut сюда
+class PropertyOwnerOut(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    
     model_config = {"from_attributes": True}
 
 # 🔹 Базовая схема недвижимости
@@ -126,8 +145,9 @@ class PropertyOut(BaseModel):
     floor: int
     total_floors: int
     property_type: str
-    deal_type: DealType
+    deal_type: DealTypeEnum
     owner_id: int
+    owner: Optional[PropertyOwnerOut] = None
     ceiling_height: Optional[float] = None
     property_condition: Optional[str] = None
     has_balcony: Optional[bool] = False

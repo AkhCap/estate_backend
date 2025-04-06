@@ -3,9 +3,14 @@ from app import models, schemas
 from typing import Optional, List
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException, status
-from sqlalchemy import func, desc, distinct
+from sqlalchemy import func, desc, distinct, or_
 from . import auth
 import logging
+from passlib.context import CryptContext
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Получение пользователя по email
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -370,3 +375,30 @@ def get_price_change_percentage(db: Session, property_id: int) -> Optional[float
     old_price = history[1].price
     new_price = history[0].price
     return ((new_price - old_price) / old_price) * 100
+
+def authenticate_user(db: Session, email: str, password: str):
+    """
+    Проверяет учетные данные пользователя
+    """
+    try:
+        print(f"Поиск пользователя с email: {email}")  # Добавляем логирование
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if not user:
+            print("Пользователь не найден")  # Добавляем логирование
+            return None
+        
+        print(f"Проверка пароля для пользователя: {user.email}")  # Добавляем логирование
+        if not pwd_context.verify(password, user.hashed_password):
+            print("Неверный пароль")  # Добавляем логирование
+            return None
+            
+        print(f"Аутентификация успешна для пользователя: {user.email}")  # Добавляем логирование
+        return user
+    except Exception as e:
+        print(f"Ошибка при аутентификации: {str(e)}")  # Добавляем логирование
+        logger.error(f"Ошибка при аутентификации: {str(e)}")
+        return None
+
+def get_user(db: Session, user_id: int) -> Optional[models.User]:
+    """Получает пользователя по ID."""
+    return db.query(models.User).filter(models.User.id == user_id).first()
