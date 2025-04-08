@@ -1,17 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaUser,
-  FaClock,
-  FaCircle,
-  FaEllipsisV,
-  FaTrash,
-  FaPenSquare,
   FaExclamationCircle,
-  FaComments
+  FaComments,
+  FaTrash,
+  FaEllipsisV
 } from "react-icons/fa";
+import { MessagesSquare } from "lucide-react";
 
 interface Chat {
   id: string;
@@ -38,6 +35,15 @@ interface ChatListProps {
   searchQuery?: string;
 }
 
+const getPropertyImageUrl = (imageUrl: string | null | undefined): string => {
+  if (!imageUrl) return "/no-image.jpg";
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${imageUrl}`;
+};
+
 const ChatList: React.FC<ChatListProps> = ({ 
   chats, 
   isLoading, 
@@ -47,21 +53,37 @@ const ChatList: React.FC<ChatListProps> = ({
   currentChatId, 
   searchQuery = "" 
 }) => {
-  // Оставляем лог получения props, он может быть полезен
-  // console.log('[ChatList] Received props:', { chats, isLoading, error, currentChatId, searchQuery }); 
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const filteredChats = chats.filter((chat) =>
     (chat.property_title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     (chat.participant_name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
-  // Оставляем лог отфильтрованных чатов
-  // console.log('[ChatList] Filtered chats:', filteredChats);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    if (openMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-6">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-        <p className="ml-3 text-sm text-gray-500">Загрузка чатов...</p>
+      <div className="flex items-center justify-center h-full p-6 text-gray-500 text-sm">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500 mr-3"></div>
+        Загрузка чатов...
       </div>
     );
   }
@@ -77,97 +99,126 @@ const ChatList: React.FC<ChatListProps> = ({
   }
 
   if (filteredChats.length === 0) {
-    const message = searchQuery 
-      ? "Чаты не найдены по вашему запросу"
-      : "У вас пока нет активных чатов";
-    const subMessage = searchQuery
-      ? "Попробуйте изменить условия поиска"
-      : "Начните общение с продавцами";
-      
+    const message = searchQuery ? "Чаты не найдены" : "У вас пока нет чатов";
+    const subMessage = searchQuery 
+        ? "Попробуйте изменить поисковый запрос."
+        : "Начните общение на странице объявления, и чат появится здесь.";
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <FaComments className="text-4xl text-gray-300 mb-4" /> 
-        <p className="text-gray-500 mb-1 font-medium">{message}</p>
-        <p className="text-sm text-gray-400">{subMessage}</p>
+      <div className="flex items-center justify-center h-full p-4">
+         <motion.div 
+            className="bg-white rounded-xl shadow-md border border-gray-100 p-8 w-full max-w-sm flex flex-col items-center text-center"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="p-4 mb-5 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-inner ring-4 ring-white/50">
+                <MessagesSquare className="w-14 h-14 text-gray-400" strokeWidth={1.5} />
+            </div>
+            <p className="text-lg font-semibold text-gray-700 mb-1">{message}</p>
+            <p className="text-sm text-gray-500">{subMessage}</p>
+          </motion.div>
       </div>
     );
   }
 
-  // Убираем лог перед рендерингом списка
-  // console.log(`[ChatList] Rendering list with ${filteredChats.length} chats...`);
   return (
-    <div className="p-2 space-y-1">
+    <div className="bg-white">
       {filteredChats.map((chat, index) => {
-        // --- УДАЛЯЕМ ДИАГНОСТИЧЕСКИЙ ЛОГ ---
-        // console.log(`[ChatList] Rendering item ${index}. Data received:`, JSON.stringify(chat, null, 2));
-        // --- КОНЕЦ УДАЛЕНИЯ ---
-
         const hasUnread = chat.unread_count && chat.unread_count > 0;
         const isActive = chat.id === currentChatId;
+        console.log(`Rendering chat ${chat.id}: unread=${chat.unread_count}`);
 
         return (
           <motion.div
             key={chat.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: index * 0.05 }}
-            className={`relative group cursor-pointer rounded-lg transition-colors duration-150 flex items-center space-x-3 p-3 ${ 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2, delay: index * 0.03 }}
+            className={`relative cursor-pointer transition-all duration-200 flex items-center space-x-3 p-4 rounded-xl ${ 
               isActive
-                ? "bg-blue-50 shadow-sm"
-                : "hover:bg-gray-50"
+                ? "bg-indigo-100 shadow-md"
+                : "hover:bg-gray-100 hover:shadow-sm border border-transparent hover:border-gray-100"
             }`}
-            onClick={() => onSelectChat(chat.id)}
+            onClick={() => {
+              if (openMenuId === chat.id) {
+                setOpenMenuId(null);
+              } else {
+                onSelectChat(chat.id);
+              }
+            }}
           >
             <div className="relative w-12 h-12 flex-shrink-0">
               <Image
-                src={chat.property_image || "/placeholder.jpg"}
-                alt={chat.property_title || "Изображение недвижимости"}
+                src={getPropertyImageUrl(chat.property_image)}
+                alt={chat.property_title || "Объект"}
                 fill
                 sizes="48px"
-                className="rounded-lg object-cover border border-gray-100"
+                className="rounded-lg object-cover border border-gray-200"
+                onError={(e) => { e.currentTarget.src = '/no-image.jpg'; }}
               />
-              {hasUnread && (
-                <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full ring-2 ring-white">
-                  {chat.unread_count}
-                </div>
-              )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <h3 className={`text-sm font-semibold text-gray-800 truncate pr-2 ${isActive ? 'text-blue-700' : ''}`}>
-                  {chat.participant_name || "Неизвестный собеседник"}
-                </h3>
-                {chat.last_message_time && (
-                  <span className={`text-xs whitespace-nowrap ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
-                    {new Date(chat.last_message_time).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                )}
-              </div>
-              <div className={`text-xs truncate ${isActive ? 'text-gray-600' : 'text-gray-500'} mb-1`}>
+              <h3 className={`text-sm font-semibold text-gray-800 line-clamp-1 mb-0.5 ${isActive ? 'text-indigo-800' : 'text-gray-800'}`}>
                 {chat.property_title || "Объявление без названия"}
+              </h3>
+              <div className={`text-xs ${ 
+                  hasUnread ? 'text-gray-700 font-medium' : 'text-gray-500' 
+              }`}>
+                 <span className="text-gray-600 font-semibold mr-1">{chat.participant_name || "Собеседник"}:</span> 
+                 <span className={`line-clamp-1 ${!hasUnread && 'text-gray-500'}`}> 
+                     {chat.last_message || <span className="italic">Нет сообщений</span>}
+                 </span>
               </div>
-              <p className={`text-xs truncate flex items-center ${hasUnread ? 'text-gray-900 font-medium' : (isActive ? 'text-gray-600' : 'text-gray-500')}`}>
-                {hasUnread ? (
-                  <FaCircle className="mr-1.5 text-blue-500 flex-shrink-0" size={6} />
-                ) : (
-                  <span className="w-[6px] mr-1.5 flex-shrink-0"></span>
-                )}
-                {chat.last_message || <span className="italic text-gray-400">Нет сообщений</span>}
-              </p>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenDeleteModal(chat.id);
-              }}
-              title="Действия"
-              className="absolute top-1/2 -translate-y-1/2 right-2 p-1.5 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 z-10"
-            >
-              <FaEllipsisV size={14} />
-            </button>
+            <div className="flex flex-col items-end flex-shrink-0 ml-2 space-y-1">
+              {(chat.unread_count && chat.unread_count > 0) ? ( 
+                <span 
+                    className="px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-full shadow-sm"
+                    title={`${chat.unread_count} непрочитанных`}
+                >
+                  {chat.unread_count > 9 ? '9+' : chat.unread_count}
+                </span>
+              ) : (
+                 null
+              )}
+            </div>
+            <div className="absolute top-3 right-2 z-10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuId(openMenuId === chat.id ? null : chat.id);
+                }}
+                title="Опции чата"
+                className="p-1 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150"
+              >
+                <FaEllipsisV size={16} />
+              </button>
+
+              <AnimatePresence>
+                {openMenuId === chat.id && (
+                  <motion.div
+                    ref={menuRef}
+                    initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                    transition={{ duration: 0.1 }}
+                    className="absolute right-0 mt-1 w-40 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => {
+                        onOpenDeleteModal(chat.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                    >
+                      <FaTrash className="w-4 h-4 mr-2" />
+                      Удалить чат
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         );
       })}

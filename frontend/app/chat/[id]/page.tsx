@@ -13,6 +13,7 @@ import chatAxiosInstance from "@/lib/chatAxios";
 import { PropertyInfo } from "@/types";
 import ConfirmationModal from "@/app/components/shared/ConfirmationModal";
 import toast from 'react-hot-toast';
+import SelectChatPlaceholder from "@/app/components/chat/SelectChatPlaceholder";
 
 // Определяем базовый URL основного бэкенда (для формирования URL картинок)
 // Убедитесь, что этот URL правильный и не содержит /api/v1, если картинки в /uploads
@@ -120,6 +121,21 @@ const ChatPage = ({ params }: PageProps) => {
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- useEffect для управления overflow body --- 
+  useEffect(() => {
+    // Запоминаем текущий стиль overflow
+    const originalOverflow = document.body.style.overflow;
+    // Отключаем прокрутку body
+    document.body.style.overflow = 'hidden';
+    console.log("[ChatPage Effect] Body overflow set to hidden.");
+
+    // Функция очистки для восстановления overflow при размонтировании
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      console.log("[ChatPage Effect] Body overflow restored to:", originalOverflow || 'auto');
+    };
+  }, []); // Пустой массив зависимостей, чтобы выполнилось только при монтировании/размонтировании
 
   useEffect(() => {
     const fetchChatData = async () => {
@@ -429,88 +445,102 @@ const ChatPage = ({ params }: PageProps) => {
   const headerImageUrl = getFirstImageUrl(propertyInfo);
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8"> {/* Внешний контейнер */}
-      <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden h-[calc(100vh-4rem)] flex"> {/* Контейнер с макс. шириной и flex */}
-        {/* Левая панель: Список чатов */} 
-        <div className="w-full md:w-[300px] lg:w-[350px] xl:w-[400px] h-full flex flex-col border-r border-gray-200 bg-white"> {/* Адаптивная ширина */} 
-           <div className="p-4 border-b border-gray-200 flex items-center"> {/* Заголовок списка чатов */} 
-             <button
-               onClick={() => router.push("/properties")}
-               className="mr-4 text-gray-400 hover:text-gray-600 transition-colors"
-               title="Назад к объявлениям"
-             >
-               <FaArrowLeft size={18} />
-             </button>
-             <h2 className="text-xl font-semibold text-gray-800">
-               Сообщения
-             </h2>
-           </div>
-           <div className="flex-1 overflow-y-auto"> {/* Контейнер для скролла списка */} 
-             <ChatList
-               chats={chats}
-               currentChatId={params.id}
-               onSelectChat={handleSelectChat}
-               isLoading={chatsLoading}
-               error={chatsError}
-               onOpenDeleteModal={openDeleteModal}
-             />
-           </div>
+    <div className="h-screen overflow-hidden bg-gray-50 pt-20">
+      <div className="flex h-full max-w-screen-xl mx-auto">
+        <div className="w-full md:w-[300px] lg:w-[350px] xl:w-[400px] h-full flex flex-col border-r border-gray-200 bg-white">
+          <div className="p-4 md:p-5 border-b border-gray-200 flex items-center flex-shrink-0">
+            <button
+              onClick={() => router.push("/properties")}
+              className="mr-4 text-gray-500 hover:text-gray-700 transition-colors"
+              title="Назад к объявлениям"
+            >
+              <FaArrowLeft size={20} />
+            </button>
+            <h2 className="text-xl font-semibold text-gray-800">
+              Сообщения
+            </h2>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            <ChatList
+              chats={chats}
+              currentChatId={params.id}
+              onSelectChat={handleSelectChat}
+              isLoading={chatsLoading}
+              error={chatsError}
+              onOpenDeleteModal={openDeleteModal}
+            />
+          </div>
         </div>
 
-        {/* Правая панель: Окно чата */}
-        <div className="flex-1 flex flex-col bg-gray-50"> {/* Фон правой панели */} 
-           {/* Убираем дублирующую логику отображения состояний отсюда */} 
-           {/* Она теперь будет внутри ChatWidget */} 
-            {pageLoading ? (
-              <div className="flex items-center justify-center h-full">
-                 <p className="text-gray-500">Загрузка...</p> {/* Просто загрузка */} 
-              </div>
-            ) : pageError ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-red-500">Ошибка: {pageError}</p>
-              </div>
-            ) : params.id === 'new' ? (
-               <div className="flex items-center justify-center h-full text-center p-8">
-                  <div>
-                     <FaComments className="w-16 h-16 mx-auto text-blue-100 mb-4" />
-                     <h2 className="text-xl font-medium text-gray-800 mb-3">
-                       Выберите чат
+        {/* Правая колонка: Виджет чата */} 
+        <div className="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden"> 
+          {/* Conditional rendering inside */} 
+          {pageLoading ? ( 
+             // Centering container for the loader
+             <div className="flex items-center justify-center h-full"> 
+                 <motion.div
+                   key="loader"
+                   animate={{ rotate: 360 }} 
+                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                   className="w-10 h-10 border-4 border-t-indigo-500 border-r-indigo-500 border-b-gray-200 border-l-gray-200 rounded-full"
+                 />
+             </div>
+          ) : 
+          pageError ? ( 
+              // Centering container for the error card
+              <div className="flex items-center justify-center h-full p-4 md:p-8"> 
+                 <motion.div
+                    key="pageErrorCard"
+                    className="bg-red-50 rounded-2xl shadow-lg border border-red-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <FaExclamationTriangle className="w-12 h-12 text-red-400 mb-5" />
+                    <h2 className="text-xl font-medium text-red-800 mb-2">Ошибка загрузки</h2>
+                    <p className="text-sm text-red-700">{pageError}</p>
+                 </motion.div>
+             </div>
+          ) : 
+          params.id === 'new' ? ( 
+              // SelectChatPlaceholder already contains its centering logic and background
+              <SelectChatPlaceholder key="selectPlaceholder" /> 
+          ) : 
+           !propertyInfo || !user ? ( 
+               // Centering container for the warning card
+               <div className="flex items-center justify-center h-full p-4 md:p-8"> 
+                 <motion.div
+                    key="warningCard"
+                    className="bg-yellow-50 rounded-2xl shadow-lg border border-yellow-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <FaExclamationTriangle className="w-12 h-12 text-yellow-500 mb-5" />
+                     <h2 className="text-xl font-medium text-yellow-800 mb-2">
+                       Не удалось загрузить данные
                      </h2>
-                     <p className="text-gray-500 text-sm">
-                       Выберите чат из списка слева, чтобы начать общение.
+                     <p className="text-sm text-yellow-700">
+                       Возможно, этот чат был удален или информация о нем недоступна.
                      </p>
-                   </div>
+                 </motion.div>
               </div>
-            ) : currentChat && propertyInfo && user?.id ? (
-              // Передаем все нужные props в ChatWidget
-              <ChatWidget
-                key={params.id} 
-                chatId={params.id}
-                userId={user.id}
-                property={propertyInfo} 
-                participantDetails={participantDetails || {}} 
-                isLoadingParticipants={isLoadingParticipants}
-                // Передаем НОВУЮ функцию
-                onSendFilesAndMessage={handleSendFilesAndMessage} 
-              />
-            ) : (
-               // Состояние, когда чат не найден после загрузки
-               <div className="flex items-center justify-center h-full text-center p-8">
-                  <div>
-                     <FaExclamationTriangle className="w-16 h-16 mx-auto text-yellow-400 mb-4" />
-                     <h2 className="text-xl font-medium text-gray-800 mb-3">
-                       Чат не найден
-                     </h2>
-                     <p className="text-gray-500 text-sm">
-                       {chatsError ? `Ошибка: ${chatsError}` : "Возможно, чат был удален или ссылка неверна."}
-                     </p>
-                  </div>
-               </div>
-            )}
-        </div>
-      </div> {/* Конец max-w-7xl flex контейнера */} 
+           ) : ( 
+               /* ChatWidget takes the full space directly */
+               <ChatWidget
+                   key={params.id} // Add key here for proper remounting
+                   chatId={params.id}
+                   userId={user.id}
+                   property={propertyInfo} // Null check handled by the condition above
+                   participantDetails={participantDetails || {}}
+                   isLoadingParticipants={isLoadingParticipants}
+                   onSendFilesAndMessage={handleSendFilesAndMessage}
+               />
+           )
+          } 
+        </div> 
+      </div>
 
-      {/* Модальное окно подтверждения удаления (вне основной структуры) */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
@@ -521,8 +551,7 @@ const ChatPage = ({ params }: PageProps) => {
         cancelButtonText="Отмена"
         isProcessing={isDeleting}
       />
-        
-    </div> //{/* Конец внешнего контейнера */}
+    </div>
   );
 };
 

@@ -306,7 +306,10 @@ export default function PropertiesPage() {
                     <div className="flex items-center gap-3 text-gray-600 mb-2">
                       <div className="flex items-center gap-1">
                         <FaBed className="w-3 h-3" />
-                        <span className="text-sm">{property.rooms} комнат</span>
+                        <span className="text-sm">
+                            {property.rooms}
+                            {typeof property.rooms === 'string' && property.rooms.trim() !== '' && property.rooms.trim().toLowerCase() !== 'студия' && ' комнат'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <FaRulerCombined className="w-3 h-3" />

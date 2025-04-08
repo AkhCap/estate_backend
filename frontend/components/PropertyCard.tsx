@@ -118,7 +118,10 @@ export default function PropertyCard({ property, index, favorites, onToggleFavor
             <div className="flex items-center gap-4 text-gray-600 mb-3">
               <div className="flex items-center gap-1">
                 <FaBed className="w-4 h-4" />
-                <span>{property.rooms} комнат</span>
+                <span>
+                    {property.rooms}
+                    {property.rooms?.toLowerCase() !== 'студия' && ' комнат'}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <FaRulerCombined className="w-4 h-4" />
