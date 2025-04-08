@@ -7,8 +7,6 @@ from app.database import Base
 # 🔹 Определяем роли пользователей
 class UserRoleEnum(str, enum.Enum):  
     PRIVATE = "private"  # Частное лицо
-    AGENT = "agent"  # Агент
-    DEVELOPER = "developer"  # Застройщик
 
 
 # 🔹 Определяем тип сделки
@@ -29,9 +27,8 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     
-
-    properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")  
-    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan") 
+    properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     history = relationship("History", back_populates="user", cascade="all, delete-orphan")
     property_views = relationship("PropertyViews", back_populates="user", cascade="all, delete-orphan")
@@ -83,7 +80,7 @@ class Property(Base):
 
     # Связи
     owner = relationship("User", back_populates="properties")
-    favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")  
+    favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
     history = relationship("History", back_populates="property", cascade="all, delete-orphan")
     images = relationship("PropertyImage", back_populates="property", cascade="all, delete", passive_deletes=True)

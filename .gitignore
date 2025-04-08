@@ -14,8 +14,11 @@ __pycache__/
 backend/venv/
 backend/uploads/
 backend/static/
-backend/alembic/versions/*.py
-!backend/alembic/versions/__init__.py
+# ! Оставляем файлы миграций в Git
+# backend/alembic/versions/*.py 
+# !backend/alembic/versions/__init__.py
+chat_service/venv/
+chat_service/uploads/
 
 # Node.js
 node_modules/
@@ -51,4 +54,5 @@ yarn-error.log*
 
 # Misc
 *.pem
+dump.rdb
 frontend/public/default-avatar.jpg

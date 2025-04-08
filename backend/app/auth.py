@@ -9,6 +9,7 @@ from typing import Optional
 from . import crud
 from .database import get_db
 from sqlalchemy.orm import Session
+from . import models
 
 # Загружаем переменные окружения из файла .env
 load_dotenv()
@@ -82,3 +83,26 @@ def get_optional_current_user(token: str = Depends(oauth2_scheme)) -> Optional[s
         return email if email else None
     except JWTError:
         return None
+
+def get_current_user_model(token: str = Depends(oauth2_scheme)):
+    """
+    Получает текущего пользователя по токену (обязательная аутентификация).
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Пользователь не найден",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not token:
+        raise credentials_exception
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        user = crud.get_user_by_email(get_db(), email)
+        if user is None:
+            raise credentials_exception
+        return user
+    except JWTError:
+        raise credentials_exception

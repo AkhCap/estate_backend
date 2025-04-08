@@ -5,8 +5,6 @@ from datetime import datetime, timezone
 import logging
 import json # Импортируем json для безопасной сериализации/десериализации
 import httpx # Для асинхронных HTTP запросов к основному бэкенду
-import shutil # <--- Добавляем импорт shutil
-from pathlib import Path # <--- Добавляем импорт Path
 
 from app.schemas import (
     ChatCreate,
@@ -41,9 +39,6 @@ redis_client = redis.Redis(
     db=settings.REDIS_DB,
     decode_responses=True # Важно: автоматически декодировать ответы из Redis в строки
 )
-
-# Директория для сохранения загруженных файлов чата (добавляем здесь для использования в delete_chat)
-UPLOAD_DIR = Path("uploads/chat_files")
 
 # --- Helper function to make datetime timezone-aware (UTC if naive) ---
 def make_aware(dt: datetime) -> datetime:
@@ -787,7 +782,7 @@ async def delete_chat(
             logger.warning(f"User {current_user_id} tried to delete chat {chat_id} without permission. Participants: {participants}")
             raise HTTPException(status_code=403, detail="У вас нет прав для удаления этого чата")
             
-        # 3. Собираем ключи для удаления из Redis
+        # 3. Собираем ключи для удаления
         # Ключи метаданных чата
         chat_key = f"chat:{chat_id}"
         participants_key = f"chat:{chat_id}:participants"
@@ -818,8 +813,7 @@ async def delete_chat(
         if owner_id: keys_to_delete.append(f"user:{owner_id}:chats") # Удаляем ключ целиком, это может быть неверно если у юзера много чатов
         if buyer_id: keys_to_delete.append(f"user:{buyer_id}:chats") # Правильнее использовать SREM
         
-        # 4. Удаляем все ключи из Redis транзакцией
-        redis_deleted = False # Флаг успешного удаления из Redis
+        # 4. Удаляем все ключи транзакцией
         if keys_to_delete:
             pipe = redis_client.pipeline()
             # Используем SREM для удаления chat_id из списков пользователей
@@ -830,32 +824,12 @@ async def delete_chat(
             if keys_to_delete_final:
                  pipe.delete(*keys_to_delete_final) # Используем * для передачи нескольких ключей в delete
                  
-            try:
-                results = pipe.execute()
-                redis_deleted = True # Считаем успешным, если транзакция выполнилась без ошибок
-                logger.info(f"Deleted chat {chat_id} Redis keys/references. Results: {results}")
-            except Exception as redis_err:
-                 logger.error(f"Error deleting Redis keys for chat {chat_id}: {redis_err}")
-                 # Не прерываем, попробуем удалить файлы, но логируем ошибку Redis
+            results = pipe.execute()
+            logger.info(f"Deleted chat {chat_id} and related keys/references. Results: {results}")
         else:
-            logger.info(f"No Redis keys found to delete for chat {chat_id}")
-            redis_deleted = True # Нет ключей - считаем "успешным" удалением из Redis
+            logger.info(f"No keys found to delete for chat {chat_id}")
 
-        # 5. Удаляем директорию с файлами чата (ПОСЛЕ удаления из Redis)
-        if redis_deleted: # Удаляем файлы только если данные из Redis удалены (или их не было)
-            chat_upload_dir = UPLOAD_DIR / chat_id
-            if chat_upload_dir.exists() and chat_upload_dir.is_dir():
-                try:
-                    shutil.rmtree(chat_upload_dir)
-                    logger.info(f"Successfully deleted chat files directory: {chat_upload_dir}")
-                except OSError as e:
-                    # Логируем ошибку, но не прерываем выполнение,
-                    # т.к. основные данные чата из Redis уже удалены
-                    logger.error(f"Error deleting chat files directory {chat_upload_dir}: {e}")
-            else:
-                logger.info(f"Chat files directory not found or is not a directory: {chat_upload_dir}")
-
-        # 6. Отправляем событие об удалении чата через WebSocket
+        # 5. Отправляем событие об удалении чата через WebSocket (опционально)
         # Убедитесь, что у вас есть ID получателя, если хотите уведомить его
         recipient_id = next((p for p in participants if p != current_user_id), None)
         if recipient_id:
