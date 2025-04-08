@@ -17,7 +17,7 @@ export default function Favorites() {
       return;
     }
     axios
-      .get("/users/favorites", {
+      .get("/favorites", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {

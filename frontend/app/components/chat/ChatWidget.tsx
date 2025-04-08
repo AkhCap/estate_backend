@@ -51,6 +51,7 @@ interface Message {
 interface ParticipantDetails {
     avatar_url?: string | null;
     name?: string; 
+    isOnline?: boolean;
 }
 
 interface ChatProps {
@@ -81,13 +82,14 @@ const formatDateSeparator = (dateString: string): string => {
   return messageDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
-const getFullImageUrl = (imageUrl: string | null | undefined): string => {
-  if (!imageUrl) return "/images/placeholder.png";
-  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
-    return imageUrl;
+const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const getFullImageUrl = (filename?: string | null): string => {
+  if (!filename) return "/images/placeholder.png";
+  if (filename.startsWith('http://') || filename.startsWith('https://')) return filename;
+  if (filename.includes('avatar')) {
+      return `${MAIN_BACKEND_BASE_URL}/uploads/avatars/${filename}`;
   }
-  const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-  return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${imageUrl}`;
+  return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${filename}`;
 };
 
 interface ChatHeaderProps {
@@ -97,80 +99,68 @@ interface ChatHeaderProps {
 }
 
 const ChatHeader = memo(({ property, participantDetails, userId }: ChatHeaderProps) => {
-  const otherParticipant = Object.entries(participantDetails).find(
-    ([id]) => Number(id) !== userId
-  );
-  const otherUserDetails = otherParticipant ? otherParticipant[1] : undefined;
+  console.log("[ChatHeader] Rendering. Property:", property, "Participants:", participantDetails);
+  const otherParticipantId = Object.keys(participantDetails).find(id => parseInt(id) !== userId);
+  const otherUserDetails = otherParticipantId ? participantDetails[parseInt(otherParticipantId)] : null;
+
+  console.log("[ChatHeader] Other User Details:", otherUserDetails);
+
+  const propertyImageUrl = getFullImageUrl(property?.image);
+  
+  const participantName = otherUserDetails?.name || 'Собеседник';
+  const initial = participantName.charAt(0).toUpperCase();
 
   return (
-    <div className="border-b border-gray-200 bg-white">
-      <Link 
-        href={`/properties/${property.id}`} 
-        className="block hover:bg-gray-50 transition-colors duration-200 cursor-pointer relative after:absolute after:inset-0 after:border-2 after:border-transparent after:hover:border-blue-100 after:rounded-lg after:transition-colors after:duration-200"
+    <Link href={`/properties/${property.id}`} legacyBehavior passHref>
+      <a 
+        className="block bg-white border-b border-gray-200 p-3 hover:bg-gray-50 transition-colors duration-150 group cursor-pointer"
+        aria-label={`Перейти к объявлению ${property.title}`}
       >
-        <div className="p-4">
-          {otherUserDetails?.name && (
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full overflow-hidden bg-blue-50 flex items-center justify-center">
-                {otherUserDetails.avatar_url ? (
-                  <Image
-                    src={otherUserDetails.avatar_url}
-                    alt={otherUserDetails.name || 'Пользователь'}
-                    width={24}
-                    height={24}
-                    className="object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = (otherUserDetails.name || '?').charAt(0).toUpperCase();
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs font-medium text-blue-600">
-                    {(otherUserDetails.name || '?').charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-blue-600">
-                  {otherUserDetails.name}
-                </span>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 ml-2"></div>
-              </div>
-            </div>
-          )}
+        <div className="flex items-center justify-between space-x-4">
+           <div className="flex items-center space-x-3 min-w-0">
+             <div className="relative flex-shrink-0">
+                 <span className="flex items-center justify-center h-11 w-11 rounded-full bg-gray-300 text-gray-600 font-medium text-lg border-2 border-white shadow-sm">
+                     {initial}
+                 </span>
+                 {otherUserDetails && (
+                    <span 
+                        className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${otherUserDetails.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}
+                        title={otherUserDetails.isOnline ? 'В сети' : 'Не в сети'}
+                    ></span>
+                 )}
+             </div>
+             <div className="min-w-0">
+                 <p className="text-sm font-semibold text-gray-900 truncate">{participantName}</p>
+             </div>
+           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="relative w-12 h-12 flex-shrink-0">
-              <Image
-                src={getFullImageUrl(property.image)}
-                alt={property.title || "Изображение недвижимости"}
-                fill
-                sizes="48px"
-                className="rounded-lg object-cover border border-gray-100"
-                onError={(e) => {
-                  console.log('[ChatWidget] Error loading image:', e.currentTarget.src);
-                  e.currentTarget.src = "/images/placeholder.png";
-                }}
-              />
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors duration-200">
-                {property.title || "Чат по объявлению"}
-              </h3>
-              <div className="mt-1 flex flex-col text-sm">
-                <div className="flex items-center text-gray-700">
-                  <span className="font-medium">{property.price.toLocaleString('ru-RU')} TJS</span>
+           <div className="flex items-center space-x-3 flex-shrink-0">
+                <div className="text-right min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">
+                        {property.title || "Объявление"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                        {property.price ? `${property.price.toLocaleString('ru-RU')} TJS` : "Цена не указана"}
+                    </p>
                 </div>
-                <div className="flex items-center text-gray-500 mt-0.5">
-                  <span className="truncate">{property.address || property.location}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+                <div className="w-12 h-12 flex-shrink-0 relative">
+                     <Image 
+                         src={propertyImageUrl || '/images/placeholder.png'} 
+                         alt={property.title || "Фото объекта"}
+                         fill
+                         sizes="48px"
+                         className="rounded-md object-cover border border-gray-200"
+                         onError={(e) => { 
+                             const target = e.target as HTMLImageElement;
+                             target.onerror = null;
+                             target.src='/images/placeholder.png'; 
+                         }}
+                     />
+                 </div>
+           </div>
         </div>
-      </Link>
-    </div>
+      </a>
+    </Link>
   );
 });
 
@@ -194,19 +184,31 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const initialLoadCompleteRef = useRef(false);
 
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        console.log("[scrollToBottom] Attempted scroll.");
-    }, 0);
+  const scrollToBottomSmooth = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    console.log("[scrollToBottomSmooth] Attempted smooth scroll.");
+  }, []);
+  
+  const scrollToBottomInstant = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    console.log("[scrollToBottomInstant] Attempted instant scroll.");
   }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
-        scrollToBottom();
+      if (!initialLoadCompleteRef.current) {
+        scrollToBottomInstant();
+        initialLoadCompleteRef.current = true;
+      } else {
+        scrollToBottomSmooth();
+      }
     }
-  }, [messages, scrollToBottom]);
+    return () => {
+      initialLoadCompleteRef.current = false;
+    };
+  }, [messages, scrollToBottomInstant, scrollToBottomSmooth, chatId]);
 
   const groupedMessages = useMemo(() => {
     console.log('[ChatWidget useMemo] Recalculating groupedMessages. Input messages:', messages);
@@ -774,9 +776,10 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
                 return (
                   <motion.div
                     key={message.id || message.temp_id}
+                    layout
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: messageIndex * 0.02 }}
+                    transition={{ duration: 0.3 }}
                     className={`flex mb-3 ${ 
                       isCurrentUser ? 'justify-end' : 'justify-start' 
                     } items-end`}
@@ -812,28 +815,33 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
                       </span>
 
                       <div
-                        className={`relative px-1 py-1 ${ 
-                             message.error ? 'border-l-2 border-red-500 pl-3' : (isCurrentUser ? 'border-r border-blue-500 pr-3' : 'border-l border-gray-300 pl-3')
-                             } transition-all duration-300 group-hover:border-opacity-100`}
+                        className={`relative max-w-full break-words ${
+                            message.message_type === 'text' 
+                            ? `px-4 py-2 rounded-2xl ${
+                                isCurrentUser
+                                ? 'bg-blue-600 text-white rounded-br-none chat-bubble-sent' 
+                                : 'bg-gray-200 text-gray-800 rounded-bl-none chat-bubble-received'
+                              } ${message.error ? 'border border-red-300' : ''}`
+                            : ''
+                        }`}
                       >
-                        <div className="text-base text-gray-800"> 
+                        <div className="text-base"> 
                             {renderMessageContent(message)}
                         </div>
-
-                         {message.error && (
-                             <div className="absolute -bottom-1 -left-1"> 
-                                 <FaExclamationTriangle className=" text-red-500" title="Ошибка отправки" />
-                             </div>
-                         )}
+                        {message.error && (
+                            <div className="absolute bottom-1 right-1 p-0.5 bg-white rounded-full">
+                                <FaExclamationTriangle className="text-red-500 w-3 h-3" title="Ошибка отправки" />
+                            </div>
+                        )}
                       </div>
-                      <div className="mt-1.5 text-xs text-gray-400 flex items-center">
+                      <div className={`mt-1.5 text-xs flex items-center ${isCurrentUser ? 'justify-end text-gray-400' : 'text-gray-400'}`}>
                         <span>{new Date(message.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                         {isCurrentUser && !message.error && (
-                          <span className="ml-1.5 flex items-center" title={message.is_read ? "Прочитано" : "Доставлено"}>
+                          <span className="ml-1.5 flex items-center" title={message.is_read ? "Прочитано" : "Отправлено/Доставлено"}>
                             {message.is_read ? (
                               <BsCheckAll className="h-4 w-4 text-blue-400" />
                             ) : (
-                              <BsCheck className="h-4 w-4 text-gray-400" />
+                              <BsCheck className="h-4 w-4 text-gray-400" /> 
                             )}
                           </span>
                         )}

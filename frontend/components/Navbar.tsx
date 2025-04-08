@@ -20,7 +20,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-md py-4 px-6">
+    <nav className="bg-gradient-to-r from-white to-gray-50 shadow-md py-4 px-6 fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto flex justify-between items-center">
         {/* Логотип или название */}
         <div className="text-2xl font-bold text-blue-600">
