@@ -19,6 +19,11 @@ estate_backend/
 │   ├── public/            # Статические файлы
 │   └── package.json       # Node.js зависимости
 │
+├── chat_service/           # Сервис чата (Python)
+│   ├── app/                # Основной код сервиса чата
+│   ├── uploads/            # Загруженные файлы чата (если есть)
+│   └── requirements.txt    # Python зависимости чата
+│
 └── .gitignore            # Git ignore файл
 ```
 
@@ -37,6 +42,11 @@ estate_backend/
 - TypeScript
 - Tailwind CSS
 - Axios
+
+### Chat Service
+- Python (предположительно FastAPI/Starlette)
+- WebSockets (предположительно)
+- Redis (судя по dump.rdb)
 
 ## Установка и запуск
 
@@ -66,6 +76,21 @@ npm install
 npm run dev
 ```
 
+### Chat Service
+
+1. Установите зависимости:
+```bash
+cd chat_service
+# Возможно, нужно создать и активировать venv
+pip install -r requirements.txt
+```
+
+2. Запустите сервер:
+```bash
+# Укажите правильную команду для запуска (например, uvicorn)
+uvicorn app.main:app --reload --port 8001 # Пример!
+```
+
 ## Docker
 
 Для запуска с помощью Docker:
@@ -84,4 +109,5 @@ docker-compose up --build
 ## Разработка
 
 - Backend API доступен на http://localhost:8000
-- Frontend доступен на http://localhost:3000 
+- Frontend доступен на http://localhost:3000
+- Chat Service доступен на http://localhost:8001 (Пример!) 

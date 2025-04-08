@@ -24,7 +24,6 @@ def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> 
     db_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
-        role="private",  # Устанавливаем значение по умолчанию
         first_name=user.first_name,
         last_name=user.last_name,
         phone=user.phone

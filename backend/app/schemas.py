@@ -12,8 +12,6 @@ class DealType(str, Enum):
 # 🔹 ENUM для ролей пользователей
 class UserRole(str, Enum):
     PRIVATE = "private"  # Частное лицо
-    AGENT = "agent"  # Агент
-    DEVELOPER = "developer"  # Застройщик
 
 # 🔹 Базовая схема пользователя
 class UserBase(BaseModel):
