@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaRegClock } from "react-icons/fa";
 import { formatPrice } from "../lib/utils";
+import Image from "next/image";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -56,85 +57,70 @@ const getDealTypeLabel = (type: string) => {
 
 interface PropertyCardProps {
   property: Property;
-  index: number;
-  favorites?: Set<number>;
-  onToggleFavorite?: (e: React.MouseEvent, propertyId: number) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  showActions?: boolean;
 }
 
-export default function PropertyCard({ property, index, favorites, onToggleFavorite }: PropertyCardProps) {
+export default function PropertyCard({ property, onEdit, onDelete, showActions = false }: PropertyCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group"
-    >
-      <Link href={`/properties/${property.id}`}>
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
-          {/* Изображение */}
-          <div className="relative h-64 overflow-hidden bg-gray-100">
-            <img
-              src={property.images && property.images.length > 0 && property.images[0].image_url 
-                ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
-                : "/images/placeholder.png"}
-              alt={property.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/images/photo1.jpg';
-                target.onerror = null; // Предотвращаем бесконечный цикл
-              }}
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-              <p className="text-white text-2xl font-bold">
-                {formatPrice(property.price)}
-              </p>
-            </div>
-            <div className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
-              {getDealTypeLabel(property.deal_type)}
-            </div>
-            {favorites && onToggleFavorite && (
+    <div className="bg-white rounded-2xl shadow-md overflow-hidden w-full">
+      {/* Контейнер для изображения фиксированного размера */}
+      <div className="relative w-full h-[240px]">
+        <Image
+          src={property.images?.[0]?.image_url || '/placeholder.jpg'}
+          alt={property.title}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+      </div>
+      
+      {/* Информация о недвижимости */}
+      <div className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="text-2xl font-semibold text-gray-900">{property.price} TJS</h3>
+          {showActions && (
+            <div className="flex gap-2">
               <button
-                onClick={(e) => onToggleFavorite(e, property.id)}
-                className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  favorites.has(property.id)
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
-                } shadow-lg`}
+                onClick={onEdit}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
               >
-                <FaHeart className={`w-5 h-5 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
+                <span className="text-sm">Редактировать</span>
               </button>
-            )}
+              <button
+                onClick={onDelete}
+                className="text-red-600 hover:text-red-800 transition-colors"
+              >
+                <span className="text-sm">Удалить</span>
+              </button>
+            </div>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-gray-600">
+            <FaMapMarkerAlt className="w-4 h-4" />
+            <span className="text-sm">{property.address}</span>
           </div>
-
-          {/* Информация */}
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
-            <div className="flex items-center text-gray-600 mb-4">
-              <FaMapMarkerAlt className="mr-2" />
-              <p className="text-sm line-clamp-1">{property.address || "Адрес не указан"}</p>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <FaBed className="w-4 h-4 text-gray-600" />
+              <span className="text-sm text-gray-600">{property.rooms} комнат</span>
             </div>
-            <div className="flex items-center gap-4 text-gray-600 mb-3">
-              <div className="flex items-center gap-1">
-                <FaBed className="w-4 h-4" />
-                <span>
-                    {property.rooms}
-                    {property.rooms?.toLowerCase() !== 'студия' && ' комнат'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <FaRulerCombined className="w-4 h-4" />
-                <span>Площадь: {property.area} м²</span>
-              </div>
+            <div className="flex items-center gap-1">
+              <FaRulerCombined className="w-4 h-4 text-gray-600" />
+              <span className="text-sm text-gray-600">Площадь: {property.area} м²</span>
             </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-              <span>Создано: {formatDate(property.created_at)}</span>
-            </div>
+          </div>
+          
+          <div className="flex items-center gap-1 text-gray-500">
+            <FaRegClock className="w-4 h-4" />
+            <span className="text-sm">Создано: {new Date(property.created_at).toLocaleDateString('ru-RU')}</span>
           </div>
         </div>
-      </Link>
-    </motion.div>
+      </div>
+    </div>
   );
 } 

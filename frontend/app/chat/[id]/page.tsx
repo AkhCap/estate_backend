@@ -446,8 +446,8 @@ const ChatPage = ({ params }: PageProps) => {
 
   return (
     <div className="h-screen overflow-hidden bg-gray-50 pt-20">
-      <div className="flex h-full max-w-screen-xl mx-auto">
-        <div className="w-full md:w-[300px] lg:w-[350px] xl:w-[400px] h-full flex flex-col border-r border-gray-200 bg-white">
+      <div className="flex h-full mx-auto">
+        <div className="w-full md:w-[250px] lg:w-[300px] h-full flex flex-col border-r border-gray-200 bg-white">
           <div className="p-4 md:p-5 border-b border-gray-200 flex items-center flex-shrink-0">
             <button
               onClick={() => router.push("/properties")}
@@ -472,73 +472,40 @@ const ChatPage = ({ params }: PageProps) => {
           </div>
         </div>
 
-        {/* Правая колонка: Виджет чата */} 
-        <div className="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden"> 
-          {/* Conditional rendering inside */} 
-          {pageLoading ? ( 
-             // Centering container for the loader
-             <div className="flex items-center justify-center h-full"> 
-                 <motion.div
-                   key="loader"
-                   animate={{ rotate: 360 }} 
-                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                   className="w-10 h-10 border-4 border-t-indigo-500 border-r-indigo-500 border-b-gray-200 border-l-gray-200 rounded-full"
-                 />
-             </div>
-          ) : 
-          pageError ? ( 
-              // Centering container for the error card
-              <div className="flex items-center justify-center h-full p-4 md:p-8"> 
-                 <motion.div
-                    key="pageErrorCard"
-                    className="bg-red-50 rounded-2xl shadow-lg border border-red-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
-                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    <FaExclamationTriangle className="w-12 h-12 text-red-400 mb-5" />
-                    <h2 className="text-xl font-medium text-red-800 mb-2">Ошибка загрузки</h2>
-                    <p className="text-sm text-red-700">{pageError}</p>
-                 </motion.div>
-             </div>
-          ) : 
-          params.id === 'new' ? ( 
-              // SelectChatPlaceholder already contains its centering logic and background
-              <SelectChatPlaceholder key="selectPlaceholder" /> 
-          ) : 
-           !propertyInfo || !user ? ( 
-               // Centering container for the warning card
-               <div className="flex items-center justify-center h-full p-4 md:p-8"> 
-                 <motion.div
-                    key="warningCard"
-                    className="bg-yellow-50 rounded-2xl shadow-lg border border-yellow-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
-                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    <FaExclamationTriangle className="w-12 h-12 text-yellow-500 mb-5" />
-                     <h2 className="text-xl font-medium text-yellow-800 mb-2">
-                       Не удалось загрузить данные
-                     </h2>
-                     <p className="text-sm text-yellow-700">
-                       Возможно, этот чат был удален или информация о нем недоступна.
-                     </p>
-                 </motion.div>
-              </div>
-           ) : ( 
-               /* ChatWidget takes the full space directly */
-               <ChatWidget
-                   key={params.id} // Add key here for proper remounting
-                   chatId={params.id}
-                   userId={user.id}
-                   property={propertyInfo} // Null check handled by the condition above
-                   participantDetails={participantDetails || {}}
-                   isLoadingParticipants={isLoadingParticipants}
-                   onSendFilesAndMessage={handleSendFilesAndMessage}
-               />
-           )
-          } 
-        </div> 
+        {/* Центральная колонка: Виджет чата */}
+        <div className="flex-1 h-full min-w-0">
+          {params.id === 'new' ? (
+            <SelectChatPlaceholder key="selectPlaceholder" />
+          ) : !propertyInfo || !user ? (
+            <div className="flex items-center justify-center h-full p-4 md:p-8">
+              <motion.div
+                key="warningCard"
+                className="bg-yellow-50 rounded-2xl shadow-lg border border-yellow-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <FaExclamationTriangle className="w-12 h-12 text-yellow-500 mb-5" />
+                <h2 className="text-xl font-medium text-yellow-800 mb-2">
+                  Не удалось загрузить данные
+                </h2>
+                <p className="text-sm text-yellow-700">
+                  Возможно, этот чат был удален или информация о нем недоступна.
+                </p>
+              </motion.div>
+            </div>
+          ) : (
+            <ChatWidget
+              key={params.id}
+              chatId={params.id}
+              userId={user.id}
+              property={propertyInfo}
+              participantDetails={participantDetails || {}}
+              isLoadingParticipants={isLoadingParticipants}
+              onSendFilesAndMessage={handleSendFilesAndMessage}
+            />
+          )}
+        </div>
       </div>
 
       <ConfirmationModal

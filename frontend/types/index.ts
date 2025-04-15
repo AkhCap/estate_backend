@@ -3,7 +3,7 @@ export interface PropertyInfo {
   id: number;
   title: string;
   price: number;
-  image: string;
+  images?: Array<{ id: number; image_url: string }>;
   seller_name: string;
   seller_phone?: string;
   seller_email?: string;

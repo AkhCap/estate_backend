@@ -1,10 +1,14 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface User {
+export interface User {
   id: number;
   email: string;
-  name: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  location?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextType {

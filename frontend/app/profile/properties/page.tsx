@@ -7,6 +7,7 @@ import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion } from "framer-motion";
 import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaEdit, FaTrash, FaEye, FaPlus, FaRegCalendarAlt } from "react-icons/fa";
+import PropertyCard from "@/components/PropertyCard";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -93,11 +94,6 @@ export default function MyPropertiesPage() {
   const fetchProperties = async () => {
     try {
       const response = await axios.get("/users/me/properties");
-      console.log("Properties response:", response.data);
-      if (response.data.length > 0) {
-        console.log("First property:", response.data[0]);
-        console.log("Deal type:", response.data[0].deal_type);
-      }
       setProperties(response.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Ошибка при загрузке объявлений");
@@ -161,9 +157,9 @@ export default function MyPropertiesPage() {
           >
             <Link href={`/properties/${property.id}`}>
               <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="flex flex-col md:flex-row">
+                <div className="flex flex-col md:flex-row h-[240px]">
                   {/* Изображение */}
-                  <div className="relative md:w-72 aspect-[4/3] md:aspect-auto overflow-hidden bg-gray-100">
+                  <div className="relative md:w-72 h-full overflow-hidden bg-gray-100">
                     <img
                       src={property.images && property.images.length > 0 && property.images[0].image_url 
                         ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
@@ -180,57 +176,61 @@ export default function MyPropertiesPage() {
                   </div>
 
                   {/* Информация */}
-                  <div className="flex-1 p-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
-                          {property.title}
-                        </h3>
-                        <div className="flex items-center text-gray-600 mb-4">
-                          <FaMapMarkerAlt className="mr-2" />
-                          <p className="text-sm line-clamp-1">{property.address}</p>
+                  <div className="flex-1 p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                            {property.title}
+                          </h3>
+                          <div className="flex items-center text-gray-600 mt-1">
+                            <FaMapMarkerAlt className="mr-2" />
+                            <p className="text-sm line-clamp-1">{property.address}</p>
+                          </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatPrice(property.price)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <FaBed className="w-4 h-4" />
+                          <span>{property.rooms} комнат</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FaRulerCombined className="w-4 h-4" />
+                          <span>Площадь: {property.area} м²</span>
                         </div>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {formatPrice(property.price)}
-                      </p>
                     </div>
 
-                    <div className="flex items-center gap-4 text-gray-600 mb-3">
-                      <div className="flex items-center gap-1">
-                        <FaBed className="w-4 h-4" />
-                        <span>{property.rooms} комнат</span>
+                    <div>
+                      <div className="flex items-center text-sm text-gray-500 mb-3">
+                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
+                        <span>Создано: {formatDate(property.created_at)}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <FaRulerCombined className="w-4 h-4" />
-                        <span>Площадь: {property.area} м²</span>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            router.push(`/properties/edit/${property.id}`);
+                          }}
+                          className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <FaEdit className="w-3 h-3" /> Редактировать
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDelete(property.id);
+                          }}
+                          className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <FaTrash className="w-3 h-3" /> Удалить
+                        </button>
                       </div>
-                    </div>
-
-                    <div className="flex items-center text-sm text-gray-500 mb-4">
-                      <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-                      <span>Создано: {formatDate(property.created_at)}</span>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push(`/properties/edit/${property.id}`);
-                        }}
-                        className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1.5"
-                      >
-                        <FaEdit className="w-3 h-3" /> Редактировать
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDelete(property.id);
-                        }}
-                        className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
-                      >
-                        <FaTrash className="w-3 h-3" /> Удалить
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -266,9 +266,7 @@ export default function MyPropertiesPage() {
               Вы уверены, что хотите удалить это объявление? Это действие нельзя отменить.
             </p>
             <div className="flex justify-end space-x-4">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setPropertyToDelete(null);
@@ -276,15 +274,13 @@ export default function MyPropertiesPage() {
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
               >
                 Отмена
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              </button>
+              <button
                 onClick={confirmDelete}
                 className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
               >
                 Удалить
-              </motion.button>
+              </button>
             </div>
           </motion.div>
         </div>

@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app import models, schemas
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException, status
-from sqlalchemy import func, desc, distinct, or_
+from sqlalchemy import func, desc, distinct, or_, text
 from . import auth
 import logging
 from passlib.context import CryptContext
@@ -236,46 +236,22 @@ def add_property_image(db: Session, property_id: int, image_url: str) -> models.
 def get_property_images(db: Session, property_id: int) -> List[models.PropertyImage]:
     return db.query(models.PropertyImage).filter(models.PropertyImage.property_id == property_id).all()
 
-# Работа с отзывами
-def create_review(db: Session, review: schemas.ReviewCreate, user_id: int) -> models.Review:
-    db_review = models.Review(
-        user_id=user_id,
-        property_id=review.property_id,
-        rating=review.rating,
-        comment=review.comment,
-    )
-    db.add(db_review)
-    db.commit()
-    db.refresh(db_review)
-    return db_review
-
-def get_reviews_by_property(db: Session, property_id: int):
-    return db.query(models.Review).filter(models.Review.property_id == property_id).all()
-
-def get_reviews_by_user(db: Session, user_id: int) -> List[models.Review]:
-    return db.query(models.Review).filter(models.Review.user_id == user_id).all()
-
-def update_review(db: Session, review_id: int, review_update: schemas.ReviewBase) -> Optional[models.Review]:
-    db_review = db.query(models.Review).filter(models.Review.id == review_id).first()
-    if db_review:
-        if review_update.rating is not None:
-            db_review.rating = review_update.rating
-        if review_update.comment is not None:
-            db_review.comment = review_update.comment
-
-        db.commit()
-        db.refresh(db_review)
-    return db_review
-
-def delete_review(db: Session, review_id: int):
-    review = db.query(models.Review).filter(models.Review.id == review_id).first()
-    if review:
-        db.delete(review)
-        db.commit()
-    return review
-
 # История просмотров
 def create_history(db: Session, history: schemas.HistoryCreate, user_id: int):
+    # Проверяем, существует ли уже такая запись
+    existing_history = db.query(models.History).filter(
+        models.History.user_id == user_id,
+        models.History.property_id == history.property_id
+    ).first()
+    
+    if existing_history:
+        # Если запись существует, обновляем время просмотра
+        existing_history.viewed_at = datetime.now()
+        db.commit()
+        db.refresh(existing_history)
+        return existing_history
+    
+    # Если записи нет, создаем новую
     db_history = models.History(
         user_id=user_id,
         property_id=history.property_id
@@ -284,33 +260,6 @@ def create_history(db: Session, history: schemas.HistoryCreate, user_id: int):
     db.commit()
     db.refresh(db_history)
     return db_history
-
-def get_history_by_user(db: Session, user_id: int):
-    # Получаем историю с полной информацией о недвижимости и изображениях
-    history = (
-        db.query(models.History)
-        .join(models.Property)  # Присоединяем таблицу недвижимости
-        .options(
-            joinedload(models.History.property).joinedload(models.Property.images)
-        )
-        .filter(
-            models.History.user_id == user_id,
-            models.Property.owner_id != user_id  # Исключаем объявления текущего пользователя
-        )
-        .order_by(models.History.viewed_at.desc())
-        .all()
-    )
-    
-    # Удаляем дубликаты, оставляя только последний просмотр для каждого объекта
-    seen_properties = set()
-    unique_history = []
-    
-    for h in history:
-        if h.property_id not in seen_properties:
-            seen_properties.add(h.property_id)
-            unique_history.append(h)
-    
-    return unique_history
 
 # Функции для работы с просмотрами
 def add_property_view(db: Session, user_id: int, property_id: int):
@@ -401,3 +350,130 @@ def authenticate_user(db: Session, email: str, password: str):
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     """Получает пользователя по ID."""
     return db.query(models.User).filter(models.User.id == user_id).first()
+
+# Работа с отзывами о пользователях
+def create_user_review(db: Session, review: schemas.UserReviewCreate, reviewer_id: int) -> models.UserReview:
+    # Проверяем, что пользователь не оставляет отзыв самому себе
+    if reviewer_id == review.reviewed_user_id:
+        raise ValueError("Нельзя оставить отзыв самому себе")
+    
+    # Проверяем, не оставлял ли уже пользователь отзыв
+    existing_review = db.query(models.UserReview).filter(
+        models.UserReview.reviewer_id == reviewer_id,
+        models.UserReview.reviewed_user_id == review.reviewed_user_id
+    ).first()
+    
+    if existing_review:
+        raise ValueError("Вы уже оставили отзыв этому пользователю")
+    
+    db_review = models.UserReview(
+        reviewer_id=reviewer_id,
+        reviewed_user_id=review.reviewed_user_id,
+        rating=review.rating,
+        comment=review.comment,
+    )
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
+
+def get_user_reviews(db: Session, user_id: int, skip: int = 0, limit: int = 10) -> List[models.UserReview]:
+    return (
+        db.query(models.UserReview)
+        .filter(models.UserReview.reviewed_user_id == user_id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def get_user_review_by_reviewer(db: Session, reviewer_id: int, reviewed_user_id: int) -> Optional[models.UserReview]:
+    return (
+        db.query(models.UserReview)
+        .filter(
+            models.UserReview.reviewer_id == reviewer_id,
+            models.UserReview.reviewed_user_id == reviewed_user_id
+        )
+        .first()
+    )
+
+def update_user_review(db: Session, review_id: int, review_update: schemas.UserReviewUpdate) -> Optional[models.UserReview]:
+    db_review = db.query(models.UserReview).filter(models.UserReview.id == review_id).first()
+    if db_review:
+        if review_update.rating is not None:
+            db_review.rating = review_update.rating
+        if review_update.comment is not None:
+            db_review.comment = review_update.comment
+
+        db.commit()
+        db.refresh(db_review)
+    return db_review
+
+def delete_user_review(db: Session, review_id: int):
+    review = db.query(models.UserReview).filter(models.UserReview.id == review_id).first()
+    if review:
+        db.delete(review)
+        db.commit()
+    return review
+
+def get_user_rating_stats(db: Session, user_id: int) -> Dict:
+    reviews = db.query(models.UserReview).filter(models.UserReview.reviewed_user_id == user_id).all()
+    
+    if not reviews:
+        return {
+            "average_rating": 0.0,
+            "total_reviews": 0,
+            "rating_distribution": {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        }
+    
+    total_rating = sum(review.rating for review in reviews)
+    rating_distribution = {i: 0 for i in range(1, 6)}
+    
+    for review in reviews:
+        rating_distribution[review.rating] += 1
+    
+    return {
+        "average_rating": round(total_rating / len(reviews), 2),
+        "total_reviews": len(reviews),
+        "rating_distribution": rating_distribution
+    }
+
+def get_history_by_user(db: Session, user_id: int) -> List[models.History]:
+    """
+    Получает историю просмотров для указанного пользователя
+    """
+    return db.query(models.History)\
+        .filter(models.History.user_id == user_id)\
+        .order_by(models.History.viewed_at.desc())\
+        .all()
+
+def set_main_image(db: Session, property_id: int, image_id: int) -> models.PropertyImage:
+    # Сначала сбрасываем предыдущее главное фото
+    db.query(models.PropertyImage).filter(
+        models.PropertyImage.property_id == property_id,
+        models.PropertyImage.is_main == True
+    ).update({"is_main": False})
+    
+    # Устанавливаем новое главное фото
+    image = db.query(models.PropertyImage).filter(
+        models.PropertyImage.id == image_id,
+        models.PropertyImage.property_id == property_id
+    ).first()
+    
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+        
+    image.is_main = True
+    db.commit()
+    db.refresh(image)
+    return image
+
+def update_existing_images(db: Session):
+    """Обновляет существующие записи изображений, устанавливая is_main=False там, где оно NULL"""
+    try:
+        db.execute(text("UPDATE property_images SET is_main = FALSE WHERE is_main IS NULL"))
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating existing images: {str(e)}")
+        return False

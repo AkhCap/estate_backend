@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "../../lib/axios";
 import { motion } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, User } from "../context/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -17,6 +17,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Очищаем предыдущие ошибки
+    
     try {
       const formDataToSend = new URLSearchParams();
       formDataToSend.append("username", formData.email);
@@ -31,28 +33,48 @@ export default function LoginPage() {
       if (response.data.access_token) {
         const token = response.data.access_token;
         
-        // Получаем данные пользователя
-        const userResponse = await axios.get("/users/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        try {
+          // Получаем данные пользователя
+          const userResponse = await axios.get("/users/me", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-        // Сохраняем данные пользователя и токен
-        login({
-          id: userResponse.data.id,
-          email: userResponse.data.email,
-          name: userResponse.data.name || userResponse.data.email,
-        }, token);
-        
-        router.push("/");
+          // Сохраняем данные пользователя и токен
+          const userData: User = {
+            id: userResponse.data.id,
+            email: userResponse.data.email,
+            first_name: userResponse.data.first_name,
+            last_name: userResponse.data.last_name,
+            phone: userResponse.data.phone,
+            avatar_url: userResponse.data.avatar_url
+          };
+          
+          login(userData, token);
+          router.push("/");
+        } catch (userError) {
+          console.error("Ошибка получения данных пользователя:", userError);
+          setError("Ошибка получения данных пользователя. Пожалуйста, попробуйте снова.");
+        }
       } else {
         setError("Не получен токен доступа");
       }
     } catch (err: any) {
       console.error("Ошибка входа:", err);
-      const errorMessage = err.response?.data?.detail || err.message || "Неизвестная ошибка";
-      setError("Ошибка входа: " + errorMessage);
+      if (err.response?.status === 401) {
+        // Показываем конкретную ошибку от сервера
+        const errorDetail = err.response.data.detail;
+        if (errorDetail === "Пользователь с таким email не найден") {
+          setError("Пользователь с таким email не найден");
+        } else if (errorDetail === "Неверный пароль") {
+          setError("Неверный пароль");
+        } else {
+          setError("Неверные учетные данные");
+        }
+      } else {
+        setError("Произошла ошибка при входе. Пожалуйста, попробуйте снова позже.");
+      }
     }
   };
 

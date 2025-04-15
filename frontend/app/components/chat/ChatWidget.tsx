@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "
 import { Manager } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPaperPlane, FaTimes, FaExclamationTriangle, FaUserCircle, FaPaperclip, FaFileAlt } from "react-icons/fa";
+import { FaPaperPlane, FaTimes, FaExclamationTriangle, FaUserCircle, FaPaperclip, FaFileAlt, FaHome } from "react-icons/fa";
 import { BsCheck, BsCheckAll } from "react-icons/bs";
 import { useAuth } from "@/app/context/AuthContext";
 import Image from "next/image";
@@ -83,6 +83,7 @@ const formatDateSeparator = (dateString: string): string => {
 };
 
 const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
 const getFullImageUrl = (filename?: string | null): string => {
   if (!filename) return "/images/placeholder.png";
   if (filename.startsWith('http://') || filename.startsWith('https://')) return filename;
@@ -94,73 +95,51 @@ const getFullImageUrl = (filename?: string | null): string => {
 
 interface ChatHeaderProps {
   property: PropertyInfo;
-  participantDetails: { [key: number]: ParticipantDetails };
   userId: number;
 }
 
-const ChatHeader = memo(({ property, participantDetails, userId }: ChatHeaderProps) => {
-  console.log("[ChatHeader] Rendering. Property:", property, "Participants:", participantDetails);
-  const otherParticipantId = Object.keys(participantDetails).find(id => parseInt(id) !== userId);
-  const otherUserDetails = otherParticipantId ? participantDetails[parseInt(otherParticipantId)] : null;
+const ChatHeader = memo(({ property, userId }: ChatHeaderProps) => {
+  console.log("[ChatHeader] Rendering. Property:", property);
 
-  console.log("[ChatHeader] Other User Details:", otherUserDetails);
-
-  const propertyImageUrl = getFullImageUrl(property?.image);
-  
-  const participantName = otherUserDetails?.name || 'Собеседник';
-  const initial = participantName.charAt(0).toUpperCase();
+  const propertyImageUrl = property.images?.[0]?.image_url
+    ? getFullImageUrl(property.images[0].image_url)
+    : null;
 
   return (
-    <Link href={`/properties/${property.id}`} legacyBehavior passHref>
-      <a 
-        className="block bg-white border-b border-gray-200 p-3 hover:bg-gray-50 transition-colors duration-150 group cursor-pointer"
-        aria-label={`Перейти к объявлению ${property.title}`}
+    <div className="bg-white border-b border-gray-200 p-3">
+      <Link 
+        href={`/properties/${property.id}`}
+        className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-1.5 transition-colors"
       >
-        <div className="flex items-center justify-between space-x-4">
-           <div className="flex items-center space-x-3 min-w-0">
-             <div className="relative flex-shrink-0">
-                 <span className="flex items-center justify-center h-11 w-11 rounded-full bg-gray-300 text-gray-600 font-medium text-lg border-2 border-white shadow-sm">
-                     {initial}
-                 </span>
-                 {otherUserDetails && (
-                    <span 
-                        className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${otherUserDetails.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}
-                        title={otherUserDetails.isOnline ? 'В сети' : 'Не в сети'}
-                    ></span>
-                 )}
-             </div>
-             <div className="min-w-0">
-                 <p className="text-sm font-semibold text-gray-900 truncate">{participantName}</p>
-             </div>
-           </div>
-
-           <div className="flex items-center space-x-3 flex-shrink-0">
-                <div className="text-right min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">
-                        {property.title || "Объявление"}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                        {property.price ? `${property.price.toLocaleString('ru-RU')} TJS` : "Цена не указана"}
-                    </p>
-                </div>
-                <div className="w-12 h-12 flex-shrink-0 relative">
-                     <Image 
-                         src={propertyImageUrl || '/images/placeholder.png'} 
-                         alt={property.title || "Фото объекта"}
-                         fill
-                         sizes="48px"
-                         className="rounded-md object-cover border border-gray-200"
-                         onError={(e) => { 
-                             const target = e.target as HTMLImageElement;
-                             target.onerror = null;
-                             target.src='/images/placeholder.png'; 
-                         }}
-                     />
-                 </div>
-           </div>
+        <div className="relative w-10 h-10 flex-shrink-0">
+          {propertyImageUrl ? (
+            <Image
+              src={propertyImageUrl}
+              alt={property.title || "Объект недвижимости"}
+              fill
+              className="rounded-lg object-cover"
+              onError={(e) => { 
+                console.error("Error loading image:", e);
+                const target = e.target as HTMLImageElement;
+                target.src = '/images/placeholder.png';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full rounded-lg bg-gray-200 flex items-center justify-center">
+              <FaHome className="w-5 h-5 text-gray-400" />
+            </div>
+          )}
         </div>
-      </a>
-    </Link>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-gray-900 truncate">
+            {property.title || "Объявление без названия"}
+          </h2>
+          <p className="text-xs text-gray-500 truncate">
+            {property.price ? `${property.price.toLocaleString()} TJS` : "Цена не указана"}
+          </p>
+        </div>
+      </Link>
+    </div>
   );
 });
 
@@ -583,128 +562,136 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
   }, [socket, chatId, userId, isUploading]);
 
   const renderMessageContent = useCallback((message: Message) => {
-      let parsedContent: FileContent | FilesMessageContent | null = null;
-      let contentToRender: React.ReactNode = message.content;
+    let parsedContent: FileContent | FilesMessageContent | null = null;
+    let contentToRender: React.ReactNode = message.content;
 
-      try {
-          parsedContent = JSON.parse(message.content);
-          if (!parsedContent || typeof parsedContent !== 'object') {
-             throw new Error('Invalid JSON content');
-          }
-      } catch (e) {
-          parsedContent = null;
+    try {
+      parsedContent = JSON.parse(message.content);
+      if (!parsedContent || typeof parsedContent !== 'object') {
+        throw new Error('Invalid JSON content');
       }
+    } catch (e) {
+      parsedContent = null;
+    }
 
-      if (parsedContent) {
-          if ((parsedContent.type === 'image' || parsedContent.type === 'file') && 'url' in parsedContent && !('files' in parsedContent)) {
-               const fileInfo = parsedContent as FileContent;
-               if (fileInfo.type === 'image') {
-                   contentToRender = (
-                       <div className="relative w-60 h-[135px] cursor-pointer group overflow-hidden rounded-md" onClick={() => { setModalImageUrl(fileInfo.url); setIsImageModalOpen(true); }}>
-                           <Image 
-                             src={fileInfo.url} 
-                             alt={fileInfo.filename || "Изображение"} 
-                             fill sizes="240px" 
-                             style={{ objectFit: 'cover' }} 
-                             className="transition-transform duration-300 group-hover:scale-105" 
-                             onError={(e) => { e.currentTarget.src = '/images/placeholder.png'; }} 
-                           />
-                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300">
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                             </svg>
-                           </div>
-                       </div>
-                   );
-               } else {
-                   contentToRender = (
-                       <a href={fileInfo.url} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200 group" download={fileInfo.filename}>
-                           <FaPaperclip className="text-gray-500 flex-shrink-0 group-hover:text-blue-500 transition-colors" size={18} />
-                           <div className="flex-1 min-w-0">
-                               <span className="text-sm font-medium text-gray-800 block truncate" title={fileInfo.filename}>
-                                   {fileInfo.filename}
-                               </span>
-                               <span className="text-xs text-gray-500">
-                                   ({(fileInfo.size / 1024).toFixed(1)} KB)
-                               </span>
-                           </div>
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                           </svg>
-                       </a>
-                   );
-               }
-               if ('caption' in fileInfo && typeof fileInfo.caption === 'string' && fileInfo.caption) {
-                    contentToRender = (
-                        <>
-                            {contentToRender}
-                            <div className="mt-1.5 text-sm break-words">{fileInfo.caption}</div>
-                        </>
-                    );
-               }
-          } else if (parsedContent.type === 'files' && Array.isArray(parsedContent.files)) {
-               const filesInfo = parsedContent as FilesMessageContent;
-               contentToRender = (
-                   <div className="space-y-2">
-                       {filesInfo.files.map((fileMeta, index) => (
-                           <div key={index}>
-                               {fileMeta.content_type.startsWith('image/') ? (
-                                   <div className="relative w-60 h-[135px] cursor-pointer group overflow-hidden rounded-md" onClick={() => { setModalImageUrl(fileMeta.url); setIsImageModalOpen(true); }}>
-                                       <Image 
-                                        src={fileMeta.url} 
-                                        alt={fileMeta.filename || "Изображение"} 
-                                        fill sizes="240px" 
-                                        style={{ objectFit: 'cover' }} 
-                                        className="transition-transform duration-300 group-hover:scale-105" 
-                                        onError={(e) => { e.currentTarget.src = '/images/placeholder.png'; }} 
-                                      />
-                                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                        </svg>
-                                      </div>
-                                   </div>
-                               ) : (
-                                   <a href={fileMeta.url} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200 group" download={fileMeta.filename}>
-                                       <FaPaperclip className="text-gray-500 flex-shrink-0 group-hover:text-blue-500 transition-colors" size={18} />
-                                       <div className="flex-1 min-w-0">
-                                           <span className="text-sm font-medium text-gray-800 block truncate" title={fileMeta.filename}>
-                                               {fileMeta.filename}
-                                           </span>
-                                           <span className="text-xs text-gray-500">
-                                               ({(fileMeta.size / 1024).toFixed(1)} KB)
-                                           </span>
-                                       </div>
-                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                       </svg>
-                                   </a>
-                               )}
-                           </div>
-                       ))}
-                       {filesInfo.caption && (
-                           <div className="text-sm text-gray-600 break-words mt-2">{filesInfo.caption}</div>
-                       )}
-                   </div>
-               );
-          } else {
-               contentToRender = <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-w-full">{JSON.stringify(parsedContent, null, 2)}</pre>;
-          }
-      } else {
-          const urlRegex = /(https?:\/\/[^\s]+)/g;
-          const parts = message.content.split(urlRegex);
-          contentToRender = parts.map((part, index) =>
-              urlRegex.test(part) ? (
-                  <a href={part} key={index} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                      {part}
-                  </a>
-              ) : (
-                  part
-              )
+    if (parsedContent) {
+      if ((parsedContent.type === 'image' || parsedContent.type === 'file') && 'url' in parsedContent && !('files' in parsedContent)) {
+        const fileInfo = parsedContent as FileContent;
+        const imageUrl = fileInfo.url.startsWith('http') 
+          ? fileInfo.url 
+          : `${process.env.NEXT_PUBLIC_API_BASE_URL}${fileInfo.url}`;
+
+        if (fileInfo.type === 'image') {
+          contentToRender = (
+            <div className="relative w-60 h-[135px] cursor-pointer group overflow-hidden rounded-md" onClick={() => { setModalImageUrl(imageUrl); setIsImageModalOpen(true); }}>
+              <Image 
+                src={imageUrl}
+                alt={fileInfo.filename || "Изображение"} 
+                fill 
+                sizes="240px" 
+                style={{ objectFit: 'cover' }} 
+                className="transition-transform duration-300 group-hover:scale-105" 
+                onError={(e) => { 
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/no-image.jpg';
+                }}
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+              </div>
+            </div>
           );
-      }
+        } else {
+          const fileUrl = fileInfo.url.startsWith('http') 
+            ? fileInfo.url 
+            : `${process.env.NEXT_PUBLIC_API_BASE_URL}${fileInfo.url}`;
+          
+          contentToRender = (
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200 group" download={fileInfo.filename}>
+              <FaPaperclip className="text-gray-500 flex-shrink-0 group-hover:text-blue-500 transition-colors" size={18} />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-gray-800 block truncate" title={fileInfo.filename}>
+                  {fileInfo.filename}
+                </span>
+                <span className="text-xs text-gray-500">
+                  ({(fileInfo.size / 1024).toFixed(1)} KB)
+                </span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </a>
+          );
+        }
+        if ('caption' in fileInfo && typeof fileInfo.caption === 'string' && fileInfo.caption) {
+          contentToRender = (
+            <>
+              {contentToRender}
+              <div className="mt-1.5 text-sm break-words">{fileInfo.caption}</div>
+            </>
+          );
+        }
+      } else if (parsedContent.type === 'files' && Array.isArray(parsedContent.files)) {
+        const filesInfo = parsedContent as FilesMessageContent;
+        contentToRender = (
+          <div className="space-y-2">
+            {filesInfo.files.map((fileMeta, index) => {
+              const fileUrl = fileMeta.url.startsWith('http') 
+                ? fileMeta.url 
+                : `${process.env.NEXT_PUBLIC_API_BASE_URL}${fileMeta.url}`;
 
-      return contentToRender;
+              return (
+                <div key={index}>
+                  {fileMeta.content_type.startsWith('image/') ? (
+                    <div className="relative w-60 h-[135px] cursor-pointer group overflow-hidden rounded-md" onClick={() => { setModalImageUrl(fileUrl); setIsImageModalOpen(true); }}>
+                      <Image 
+                        src={fileUrl}
+                        alt={fileMeta.filename || "Изображение"} 
+                        fill 
+                        sizes="240px" 
+                        style={{ objectFit: 'cover' }} 
+                        className="transition-transform duration-300 group-hover:scale-105" 
+                        onError={(e) => { 
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/no-image.jpg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                  ) : (
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200 group" download={fileMeta.filename}>
+                      <FaPaperclip className="text-gray-500 flex-shrink-0 group-hover:text-blue-500 transition-colors" size={18} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800 block truncate" title={fileMeta.filename}>
+                          {fileMeta.filename}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({(fileMeta.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+            {filesInfo.caption && (
+              <div className="text-sm text-gray-600 break-words mt-2">{filesInfo.caption}</div>
+            )}
+          </div>
+        );
+      }
+    }
+
+    return contentToRender;
   }, [setModalImageUrl, setIsImageModalOpen]);
 
   const isLoading = isLoadingHistory || isLoadingParticipants;
@@ -728,7 +715,6 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
     <div className="flex flex-col h-full bg-gray-50">
       <ChatHeader 
         property={property} 
-        participantDetails={participantDetails}
         userId={userId}
       />
       

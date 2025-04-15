@@ -246,6 +246,13 @@ const generateTitle = (data: PropertyFormData): string => {
   return title;
 };
 
+const windowViewOptions = [
+  { value: "yard", label: "Во двор" },
+  { value: "park", label: "На парк" },
+  { value: "street", label: "На улицу" },
+  { value: "mountains", label: "На горы" }
+];
+
 export default function CreatePropertyPage({ initialData, isEditing, propertyId }: CreatePropertyPageProps) {
   const router = useRouter();
   const [formData, setFormData] = useState<PropertyFormData>(initialData || initialPropertyFormData);
@@ -265,6 +272,7 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
     10: { isCompleted: false, isActive: false },
     11: { isCompleted: false, isActive: false }
   });
+  const [mainPhotoIndex, setMainPhotoIndex] = useState<number>(-1);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -608,6 +616,9 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
               onDelete={handlePhotoDelete}
               existingPhotos={formData.existingPhotos}
               onExistingPhotoDelete={handleExistingPhotoDelete}
+              onSetMainPhoto={handleSetMainPhoto}
+              mainPhotoIndex={mainPhotoIndex}
+              onSetMainPhotoForNew={handleSetMainPhotoForNew}
             />
             {error && (
               <div className="text-red-500 text-sm mt-2">
@@ -802,6 +813,22 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
                 >
                   Ванна
                 </button>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Вид из окна</label>
+              <div className="grid grid-cols-2 gap-4">
+                {["Во двор", "На парк", "На улицу", "На горы"].map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => handleWindowViewSelect(view)}
+                    className={formData.windowView?.includes(view) ? activeButtonClass : baseButtonClass}
+                  >
+                    {view}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1164,12 +1191,32 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
       // Загружаем новые фотографии
       if (formData.photos && formData.photos.length > 0) {
         const formDataFiles = new FormData();
-        formData.photos.forEach((file) => {
-          formDataFiles.append("files", file);
+        
+        // Сначала добавляем главное фото, если оно выбрано
+        if (mainPhotoIndex !== -1) {
+          formDataFiles.append("files", formData.photos[mainPhotoIndex]);
+        }
+        
+        // Затем добавляем остальные фото
+        formData.photos.forEach((file, index) => {
+          if (index !== mainPhotoIndex) {
+            formDataFiles.append("files", file);
+          }
         });
+
         await axios.post(`/properties/${responsePropertyId}/upload-images`, formDataFiles, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+
+        // Если есть главное фото, устанавливаем его
+        if (mainPhotoIndex !== -1) {
+          // Получаем ID первого загруженного фото (оно будет главным)
+          const imagesResponse = await axios.get(`/properties/${responsePropertyId}/images`);
+          const firstImageId = imagesResponse.data[0]?.id;
+          if (firstImageId) {
+            await axios.post(`/properties/${responsePropertyId}/images/${firstImageId}/set-main`);
+          }
+        }
       }
       
       router.push(`/properties/${responsePropertyId}`);
@@ -1445,6 +1492,24 @@ export default function CreatePropertyPage({ initialData, isEditing, propertyId 
   const handleFloorSelect = (floor: "Цокольный") => {
     setFormData(prev => ({ ...prev, floor }));
     updateStepStatus("rooms");
+  };
+
+  const handleWindowViewSelect = (view: string) => {
+    setFormData(prev => ({
+      ...prev,
+      windowView: prev.windowView.includes(view)
+        ? prev.windowView.filter(v => v !== view)
+        : [...prev.windowView, view]
+    }));
+    updateStepStatus("additional");
+  };
+
+  const handleSetMainPhoto = (index: number) => {
+    setMainPhotoIndex(index);
+  };
+
+  const handleSetMainPhotoForNew = (index: number) => {
+    setMainPhotoIndex(index);
   };
 
   return (

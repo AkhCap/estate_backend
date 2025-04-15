@@ -4,6 +4,9 @@ import { motion } from "framer-motion";
 import axios from "../../lib/axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth, type User } from "@/app/context/AuthContext";
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaHistory, FaHeart, FaHome } from 'react-icons/fa';
+import Image from 'next/image';
 
 interface UserProfile {
   id: number;
@@ -18,13 +21,19 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [avatar, setAvatar] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const profileLinks = [
+    { href: "/profile/history", label: "История просмотров", icon: FaHistory },
+    { href: "/profile/favorites", label: "Избранное", icon: FaHeart },
+    { href: "/profile/properties", label: "Мои объявления", icon: FaHome },
+  ];
 
   useEffect(() => {
     fetchProfile();
@@ -88,7 +97,6 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       const response = await axios.get("/users/me");
-      setProfile(response.data);
       setFormData(response.data);
     } catch (err: any) {
       const errorMessage = err.response?.data 
@@ -119,38 +127,32 @@ export default function ProfilePage() {
     setSuccess("");
 
     try {
-      const updateData: any = {};
-      
-      // Отправляем только измененные поля
-      const allowedFields = ['email', 'first_name', 'last_name', 'phone'];
-      allowedFields.forEach(field => {
-        if (
-          formData[field] !== undefined && 
-          formData[field] !== null && 
-          profile && 
-          formData[field] !== profile[field]
-        ) {
-          updateData[field] = formData[field];
-        }
-      });
+      // Сначала обновляем основные данные профиля
+      const profileData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone
+      };
 
-      // Отправляем данные в формате JSON
-      await axios.put("/users/me", updateData);
+      await axios.put("/users/me", profileData);
 
-      // Если есть аватар, отправляем его отдельно
+      // Если есть новый аватар, отправляем его отдельным запросом
       if (avatar) {
         const avatarFormData = new FormData();
-        avatarFormData.append("file", avatar);
+        avatarFormData.append('file', avatar);
+        
         await axios.post("/users/me/avatar", avatarFormData, {
           headers: {
-            "Content-Type": "multipart/form-data",
+            'Content-Type': 'multipart/form-data',
           },
         });
       }
 
+      await fetchProfile(); // Обновляем данные профиля после успешного сохранения
       setSuccess("Профиль успешно обновлен");
       setIsEditing(false);
-      fetchProfile();
+      setAvatar(null);
     } catch (err: any) {
       const errorMessage = err.response?.data 
         ? formatErrorMessage(err.response.data)
@@ -170,173 +172,198 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Мой профиль</h1>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsEditing(!isEditing)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-        >
-          {isEditing ? "Отменить" : "Редактировать"}
-        </motion.button>
-      </div>
+    <div className="min-h-screen bg-gray-50 pt-20 pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Профиль */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Верхняя часть с фоном */}
+          <div className="h-32 bg-gradient-to-r from-emerald-600 to-blue-600"></div>
+          
+          {/* Основная информация */}
+          <div className="relative px-6 pb-6">
+            {/* Аватар */}
+            <div className="absolute -top-12 left-6">
+              <div className="w-24 h-24 rounded-full bg-white p-1">
+                <div className="relative w-full h-full rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 flex items-center justify-center text-white overflow-hidden">
+                  {formData.avatar_url ? (
+                    <Image
+                      src={formData.avatar_url}
+                      alt="Profile"
+                      width={96}
+                      height={96}
+                      priority
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <FaUser className="w-12 h-12" />
+                  )}
+                  {isEditing && (
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer transition-opacity hover:bg-black/70">
+                      <span className="text-white text-sm">Изменить</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>
-      )}
+            {/* Кнопка редактирования */}
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="absolute top-4 right-6 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:text-emerald-600 font-medium transition-all duration-200 flex items-center space-x-2"
+            >
+              <FaEdit className="w-4 h-4" />
+              <span>{isEditing ? 'Отмена' : 'Редактировать'}</span>
+            </button>
 
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-xl">
-          {success}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Аватар */}
-        <div className="flex items-center space-x-6">
-          <div className="relative">
-            <img
-              src={
-                avatar
-                  ? URL.createObjectURL(avatar)
-                  : profile?.avatar_url
-                  ? profile.avatar_url.startsWith('http')
-                    ? profile.avatar_url
-                    : `${process.env.NEXT_PUBLIC_API_URL}${profile.avatar_url}`
-                  : "/default-avatar.jpg"
-              }
-              alt={profile?.username}
-              className="w-24 h-24 rounded-full object-cover ring-4 ring-blue-50"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "/default-avatar.jpg";
-              }}
-            />
-            {isEditing && (
-              <label
-                htmlFor="avatar"
-                className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            {/* Форма профиля */}
+            <form onSubmit={handleSubmit} className="pt-16 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Имя
+                  </label>
+                  <input
+                    type="text"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                   />
-                </svg>
-                <input
-                  type="file"
-                  id="avatar"
-                  name="avatar"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-              </label>
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {profile?.first_name} {profile?.last_name}
-            </h2>
-            <p className="text-gray-600">{profile?.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Фамилия
+                  </label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Телефон
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
+              </div>
+
+              {isEditing && (
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
+                  >
+                    Сохранить
+                  </button>
+                </div>
+              )}
+            </form>
           </div>
         </div>
 
-        {/* Поля формы */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Имя
-            </label>
-            <input
-              type="text"
-              name="first_name"
-              value={formData.first_name || ""}
-              onChange={handleInputChange}
-              disabled={!isEditing}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
+        {/* Статистика и быстрые действия */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Управление недвижимостью</h2>
+          <div className="grid grid-cols-1 gap-4">
+            <Link
+              href="/profile/properties"
+              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <FaHome className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Мои объявления</h3>
+                    <p className="text-sm text-gray-500">Управляйте своими объявлениями о недвижимости</p>
+                  </div>
+                </div>
+                <div className="text-emerald-600">→</div>
+              </div>
+            </Link>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Фамилия
-            </label>
-            <input
-              type="text"
-              name="last_name"
-              value={formData.last_name || ""}
-              onChange={handleInputChange}
-              disabled={!isEditing}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
+            <Link
+              href="/profile/favorites"
+              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <FaHeart className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Избранное</h3>
+                    <p className="text-sm text-gray-500">Сохраненные объявления и интересные предложения</p>
+                  </div>
+                </div>
+                <div className="text-emerald-600">→</div>
+              </div>
+            </Link>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Телефон
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone || ""}
-              onChange={handleInputChange}
-              disabled={!isEditing}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email || ""}
-              onChange={handleInputChange}
-              disabled={!isEditing}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-            />
+            <Link
+              href="/profile/history"
+              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <FaHistory className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">История просмотров</h3>
+                    <p className="text-sm text-gray-500">Недавно просмотренные объявления</p>
+                  </div>
+                </div>
+                <div className="text-emerald-600">→</div>
+              </div>
+            </Link>
           </div>
         </div>
 
-        {/* Кнопки */}
-        {isEditing && (
-          <div className="flex justify-end space-x-4">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setIsEditing(false);
-                setFormData(profile || {});
-                setAvatar(null);
-              }}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-            >
-              Отмена
-            </motion.button>
-            <motion.button
-              type="submit"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-            >
-              Сохранить
-            </motion.button>
+        {/* Сообщения об ошибках и успехе */}
+        {error && (
+          <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl">
+            {error}
           </div>
         )}
-      </form>
+        {success && (
+          <div className="mt-6 p-4 bg-emerald-50 text-emerald-600 rounded-xl">
+            {success}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

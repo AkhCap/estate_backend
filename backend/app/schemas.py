@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, root_validator
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from app.enums import DealTypeEnum, PropertyTypeEnum
@@ -32,15 +32,19 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 # 🔹 Схема вывода данных о пользователе
-class UserOut(UserBase):
+class UserOut(BaseModel):
     id: int
-    role: str
-    is_active: bool
+    email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
-    
+    role: str
+    is_active: bool
+    average_rating: Optional[float] = None
+    total_reviews: Optional[int] = None
+    created_at: datetime
+
     model_config = {"from_attributes": True}
     
 # --- Новая схема для публичного профиля --- 
@@ -58,6 +62,16 @@ class PropertyOwnerOut(BaseModel):
     id: int
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    properties_count: int = 0
+    created_at: datetime
+    avatar_url: Optional[str] = None
+    
+    @root_validator(pre=True)
+    def calculate_properties_count(cls, values):
+        if hasattr(values, 'properties'):
+            values = dict(values.__dict__)
+            values['properties_count'] = len(values['properties'])
+        return values
     
     model_config = {"from_attributes": True}
 
@@ -80,6 +94,7 @@ class PropertyBase(BaseModel):
 class PropertyImageOut(BaseModel):
     id: int
     image_url: str
+    is_main: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -225,21 +240,6 @@ class FavoriteOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
-# 🔹 Схемы для отзывов
-class ReviewBase(BaseModel):
-    rating: int
-    comment: Optional[str] = None
-
-class ReviewCreate(ReviewBase):
-    property_id: int
-
-class ReviewOut(ReviewBase):
-    id: int
-    user_id: int
-    property_id: int
-
-    model_config = {"from_attributes": True}
-
 class HistoryBase(BaseModel):
     property_id: int
 
@@ -272,5 +272,34 @@ class PropertyViewsOut(PropertyViewsBase):
     id: int
     viewed_at: datetime
     user_id: int
+
+    model_config = {"from_attributes": True}
+
+# Схемы для отзывов о пользователях
+class UserReviewBase(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
+
+class UserReviewCreate(UserReviewBase):
+    reviewed_user_id: int
+
+class UserReviewUpdate(UserReviewBase):
+    pass
+
+class UserReviewOut(UserReviewBase):
+    id: int
+    reviewer_id: int
+    reviewed_user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+    reviewer: UserOut
+    reviewed_user: UserOut
+
+    model_config = {"from_attributes": True}
+
+class UserRatingOut(BaseModel):
+    average_rating: float
+    total_reviews: int
+    rating_distribution: Dict[int, int]  # Количество отзывов для каждой оценки
 
     model_config = {"from_attributes": True}
