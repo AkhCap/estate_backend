@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func, ARRAY, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, func, ARRAY, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -26,12 +26,14 @@ class User(Base):
     phone = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
     
     properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     history = relationship("History", back_populates="user", cascade="all, delete-orphan")
     property_views = relationship("PropertyViews", back_populates="user", cascade="all, delete-orphan")
+    reviews_given = relationship("UserReview", foreign_keys="UserReview.reviewer_id", back_populates="reviewer", cascade="all, delete-orphan")
+    reviews_received = relationship("UserReview", foreign_keys="UserReview.reviewed_user_id", back_populates="reviewed_user", cascade="all, delete-orphan")
 
   
 
@@ -81,7 +83,6 @@ class Property(Base):
     # Связи
     owner = relationship("User", back_populates="properties")
     favorites = relationship("Favorite", back_populates="property", cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="property", cascade="all, delete-orphan")
     history = relationship("History", back_populates="property", cascade="all, delete-orphan")
     images = relationship("PropertyImage", back_populates="property", cascade="all, delete", passive_deletes=True)
     property_views = relationship("PropertyViews", back_populates="property", cascade="all, delete-orphan")
@@ -95,6 +96,7 @@ class PropertyImage(Base):
     id = Column(Integer, primary_key=True, index=True)
     property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
     image_url = Column(String, nullable=False)
+    is_main = Column(Boolean, default=False)
     uploaded_at = Column(DateTime, server_default=func.now())
 
     property = relationship("Property", back_populates="images")
@@ -111,19 +113,6 @@ class Favorite(Base):
     # Обратные связи:
     user = relationship("User", back_populates="favorites")
     property = relationship("Property", back_populates="favorites")
-
-
-class Review(Base):
-    __tablename__ = "reviews"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    property_id = Column(Integer, ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
-    rating = Column(Integer, nullable=False)
-    comment = Column(Text, nullable=True)
-
-    user = relationship("User", back_populates="reviews")
-    property = relationship("Property", back_populates="reviews")
 
 
 class History(Base):
@@ -159,3 +148,22 @@ class PriceHistory(Base):
     change_date = Column(DateTime, server_default=func.now())
 
     property = relationship("Property", back_populates="price_history")
+
+
+class UserReview(Base):
+    __tablename__ = "user_reviews"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reviewed_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    reviewer = relationship("User", foreign_keys=[reviewer_id], back_populates="reviews_given")
+    reviewed_user = relationship("User", foreign_keys=[reviewed_user_id], back_populates="reviews_received")
+
+    __table_args__ = (
+        UniqueConstraint('reviewer_id', 'reviewed_user_id', name='unique_user_review'),
+    )

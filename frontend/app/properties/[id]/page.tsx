@@ -1,18 +1,23 @@
 // Файл: app/properties/page.tsx
 "use client";
 
-import React from 'react';
-import { useState, useEffect } from "react";
+import React, { useEffect } from 'react';
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw, FaArrowRight, FaBath, FaShower, FaWindowMaximize, FaHashtag, FaEye, FaRulerVertical, FaWifi, FaUser, FaComments, FaShare, FaPhone, FaEnvelope } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaBuilding, FaCar, FaThermometerHalf, FaStar, FaMapMarkerAlt, FaRegCalendarAlt, FaRegListAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTimes, FaChild, FaPaw, FaArrowRight } from "react-icons/fa";
+import { TbRuler, TbBed, TbLayersIntersect, TbStar, TbBuilding, TbHome, TbCalendar, TbCar, TbFlame, TbLock } from 'react-icons/tb';
+import { MdOutlineSquare, MdOutlineBedroomParent, MdOutlineLayers, MdOutlineStarPurple500, MdOutlineBuild, MdOutlineHome, MdOutlineCalendarMonth, MdOutlineDirectionsCar, MdOutlineLocalFireDepartment, MdOutlineElevator, MdOutlineBathroom, MdOutlineShower, MdOutlineWindow, MdOutlineVisibility, MdOutlineTag, MdOutlineWifi, MdOutlineChat, MdOutlineLock, MdOutlineHeight } from 'react-icons/md';
 import ImageCarousel from "../../../components/ImageCarousel";
 import Link from "next/link";
 import chatAxiosInstance from "@/lib/chatAxios";
+import { ShareButton } from '@/app/components/ui/ShareButton';
+import { ReportButton } from '@/app/components/ui/ReportButton';
+import { Button } from '@/components/ui/button';
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Image {
   id: number;
@@ -63,6 +68,9 @@ interface Property {
   rent_duration?: string;
   apartment_number?: string;
   price_history?: PriceHistory[];
+  owner?: User;
+  created_at: string;
+  updated_at: string;
 }
 
 interface User {
@@ -76,6 +84,19 @@ interface User {
   reviews_count: number;
   created_at: string;
   properties_count: number;
+  reviews?: Review[];
+}
+
+interface Review {
+  id: number;
+  comment: string;
+  created_at: string;
+  reviewer: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  };
 }
 
 interface ImageGalleryProps {
@@ -187,6 +208,36 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ images }) => {
   );
 };
 
+// Функция для определения последнего изменения (включая изменения цены)
+const getLastModification = (property: Property) => {
+  if (!property) return null;
+
+  let dates = [new Date(property.created_at)];
+  
+  if (property.updated_at) {
+    dates.push(new Date(property.updated_at));
+  }
+  
+  if (property.price_history && property.price_history.length > 0) {
+    dates.push(...property.price_history.map(ph => new Date(ph.change_date)));
+  }
+  
+  const lastDate = new Date(Math.max(...dates.map(date => date.getTime())));
+  const isCreated = lastDate.getTime() === new Date(property.created_at).getTime();
+  
+  return {
+    date: lastDate,
+    isCreated
+  };
+};
+
+const windowViewLabels: { [key: string]: string } = {
+  "Во двор": "Во двор",
+  "На парк": "На парк",
+  "На улицу": "На улицу",
+  "На горы": "На горы"
+};
+
 const PropertyDetailPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
@@ -247,6 +298,8 @@ const PropertyDetailPage: React.FC = () => {
             is_detail_view: true
           }
         });
+        console.log('Property data:', propertyResponse.data);
+        console.log('Owner data:', propertyResponse.data.owner);
         setProperty(propertyResponse.data);
 
         // Проверяем наличие токена в localStorage
@@ -285,6 +338,10 @@ const PropertyDetailPage: React.FC = () => {
     };
     fetchData();
   }, [params.id]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   // Добавляем функцию для обновления данных
   const refreshPropertyData = async () => {
@@ -437,22 +494,53 @@ const PropertyDetailPage: React.FC = () => {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl p-6 shadow-lg overflow-hidden"
+              className="p-6 overflow-hidden"
             >
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{property.title}</h1>
-                  <div className="flex items-center text-gray-600">
-                    <FaMapMarkerAlt className="mr-2" />
-                    <p>{property.address}</p>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{property?.title}</h1>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center text-gray-600">
+                      <FaMapMarkerAlt className="mr-2" />
+                      <p>{property?.address}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <FaRegCalendarAlt className="mr-1" />
+                      {(() => {
+                        const modification = getLastModification(property);
+                        if (modification) {
+                          return modification.isCreated
+                            ? `Опубликовано: ${modification.date.toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}`
+                            : `Обновлено: ${modification.date.toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}`;
+                        }
+                        return '';
+                      })()}
+                    </div>
                   </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShareButton
+                    title={property.title}
+                    url={typeof window !== 'undefined' ? window.location.href : ''}
+                  />
+                  <ReportButton propertyId={property.id.toString()} />
                 </div>
               </div>
 
               {/* Карусель изображений */}
               <div className="relative w-full h-[500px] bg-gray-100 rounded-xl overflow-hidden mb-6">
                 <ImageCarousel
-                  images={property.images.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
+                  images={property?.images?.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
                 />
               </div>
 
@@ -463,8 +551,8 @@ const PropertyDetailPage: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900">Описание</h3>
                 </div>
                 <div className="text-gray-600 leading-relaxed">
-                  {isDescriptionExpanded ? property.description : property.description?.slice(0, 280)}
-                  {property.description && property.description.length > 280 && (
+                  {isDescriptionExpanded ? property?.description : property?.description?.slice(0, 280)}
+                  {property?.description && property.description.length > 280 && (
                     <>
                       {!isDescriptionExpanded && (
                         <span className="text-gray-400">...</span>
@@ -500,112 +588,103 @@ const PropertyDetailPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl p-6 shadow-lg"
+              className="p-6 overflow-hidden"
             >
               <h2 className="text-xl font-bold mb-4 text-gray-900">Основные характеристики</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRulerCombined className="text-blue-600" />
+                    <MdOutlineSquare className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Площадь</div>
-                    <div className="font-medium">{property.area} м²</div>
+                    <div className="text-sm font-semibold text-gray-900">Площадь</div>
+                    <div className="text-gray-600">{property?.area} м²</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaBed className="text-blue-600" />
+                    <MdOutlineBedroomParent className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Комнат</div>
-                    <div className="font-medium">{property.rooms}</div>
+                    <div className="text-sm font-semibold text-gray-900">Комнат</div>
+                    <div className="text-gray-600">{property?.rooms}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRegListAlt className="text-blue-600" />
+                    <MdOutlineLayers className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Этаж</div>
-                    <div className="font-medium">{property.floor}/{property.total_floors}</div>
+                    <div className="text-sm font-semibold text-gray-900">Этаж</div>
+                    <div className="text-gray-600">{property?.floor}/{property?.total_floors}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaStar className="text-blue-600" />
+                    <MdOutlineStarPurple500 className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Ремонт</div>
-                    <div className="font-medium">{property.renovation}</div>
+                    <div className="text-sm font-semibold text-gray-900">Ремонт</div>
+                    <div className="text-gray-600">{property?.renovation}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaThermometerHalf className="text-blue-600" />
+                    <MdOutlineBathroom className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Отопление</div>
-                    <div className="font-medium">{property.heating}</div>
+                    <div className="text-sm font-semibold text-gray-900">Санузел</div>
+                    <div className="text-gray-600">{property?.bathroom}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaBath className="text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Санузел</div>
-                    <div className="font-medium">{property.bathroom}</div>
-                  </div>
-                </div>
-                {property.bath_type && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                {property?.bath_type && (
+                  <div className="flex items-center gap-3 p-3">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <FaShower className="text-blue-600" />
+                      <MdOutlineShower className="text-blue-600 text-lg" />
                     </div>
                     <div>
-                      <div className="text-sm text-gray-500">Ванная</div>
-                      <div className="font-medium">{property.bath_type}</div>
+                      <div className="text-sm font-semibold text-gray-900">Ванная</div>
+                      <div className="text-gray-600">{property?.bath_type}</div>
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaWindowMaximize className="text-blue-600" />
+                    <MdOutlineWindow className="text-blue-600 w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Балкон</div>
-                    <div className="font-medium">{property.has_balcony ? "Есть" : "Нет"}</div>
+                    <div className="text-sm font-semibold text-gray-900">Балкон</div>
+                    <div className="text-gray-600">{property?.has_balcony ? "Есть" : "Нет"}</div>
                   </div>
                 </div>
-                {property.window_view && property.window_view.length > 0 && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                {property?.window_view && property.window_view.length > 0 && (
+                  <div className="flex items-center gap-3 p-3">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <FaEye className="text-blue-600" />
+                      <MdOutlineWindow className="text-blue-600 w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm text-gray-500">Вид из окна</div>
-                      <div className="font-medium">{property.window_view.join(", ")}</div>
+                      <div className="text-sm font-semibold text-gray-900">Вид из окна</div>
+                      <div className="text-gray-600">{property.window_view.join(", ")}</div>
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRulerVertical className="text-blue-600" />
+                    <MdOutlineHeight className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Высота потолков</div>
-                    <div className="font-medium">{property.ceiling_height} м</div>
+                    <div className="text-sm font-semibold text-gray-900">Высота потолков</div>
+                    <div className="text-gray-600">{property?.ceiling_height} м</div>
                   </div>
                 </div>
-                {property.apartment_number && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                {property?.apartment_number && (
+                  <div className="flex items-center gap-3 p-3">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <FaHashtag className="text-blue-600" />
+                      <MdOutlineTag className="text-blue-600 text-lg" />
                     </div>
                     <div>
-                      <div className="text-sm text-gray-500">Номер квартиры</div>
-                      <div className="font-medium">{property.apartment_number}</div>
+                      <div className="text-sm font-semibold text-gray-900">Номер квартиры</div>
+                      <div className="text-gray-600">{property?.apartment_number}</div>
                     </div>
                   </div>
                 )}
@@ -617,55 +696,64 @@ const PropertyDetailPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl p-6 shadow-lg"
+              className="p-6 overflow-hidden"
             >
               <h2 className="text-xl font-bold mb-4 text-gray-900">О доме</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaBuilding className="text-blue-600" />
+                    <MdOutlineBuild className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Тип дома</div>
-                    <div className="font-medium">{property.property_condition}</div>
+                    <div className="text-sm font-semibold text-gray-900">Тип дома</div>
+                    <div className="text-gray-600">{property?.property_condition}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRegListAlt className="text-blue-600" />
+                    <MdOutlineHome className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Этажей в доме</div>
-                    <div className="font-medium">{property.total_floors}</div>
+                    <div className="text-sm font-semibold text-gray-900">Этажей в доме</div>
+                    <div className="text-gray-600">{property?.total_floors}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRegCalendarAlt className="text-blue-600" />
+                    <MdOutlineCalendarMonth className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Год постройки</div>
-                    <div className="font-medium">{property.build_year}</div>
+                    <div className="text-sm font-semibold text-gray-900">Год постройки</div>
+                    <div className="text-gray-600">{property?.build_year}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaCar className="text-blue-600" />
+                    <MdOutlineDirectionsCar className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Парковка</div>
-                    <div className="font-medium">{property.parking?.join(", ") || "Нет"}</div>
+                    <div className="text-sm font-semibold text-gray-900">Парковка</div>
+                    <div className="text-gray-600">{property?.parking?.join(", ") || "Нет"}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FaRegListAlt className="text-blue-600" />
+                    <MdOutlineLocalFireDepartment className="text-blue-600 text-lg" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Лифты</div>
-                    <div className="font-medium">
-                      {property.lifts_passenger > 0 && `Пассажирский: ${property.lifts_passenger}`}
-                      {property.lifts_freight > 0 && ` Грузовой: ${property.lifts_freight}`}
+                    <div className="text-sm font-semibold text-gray-900">Отопление</div>
+                    <div className="text-gray-600">{property?.heating}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <MdOutlineElevator className="text-blue-600 text-lg" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">Лифты</div>
+                    <div className="text-gray-600">
+                      {property?.lifts_passenger > 0 && `Пассажирский: ${property.lifts_passenger}`}
+                      {property?.lifts_freight > 0 && ` Грузовой: ${property.lifts_freight}`}
                     </div>
                   </div>
                 </div>
@@ -677,14 +765,14 @@ const PropertyDetailPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-white rounded-2xl p-6 shadow-lg"
+              className="p-6 overflow-hidden"
             >
               <h2 className="text-xl font-bold mb-6 text-gray-900">В квартире есть</h2>
               <div className="space-y-4">
-                {property.furniture && property.furniture.length > 0 && (
+                {property?.furniture && property.furniture.length > 0 && (
                   <motion.div 
                     whileHover={{ scale: 1.02 }}
-                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-100"
+                    className="flex items-center p-5"
                   >
                     <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shadow-sm">
                       <FaBed className="w-6 h-6 text-blue-600" />
@@ -695,13 +783,13 @@ const PropertyDetailPage: React.FC = () => {
                     </div>
                   </motion.div>
                 )}
-                {property.appliances && property.appliances.length > 0 && (
+                {property?.appliances && property.appliances.length > 0 && (
                   <motion.div 
                     whileHover={{ scale: 1.02 }}
-                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-green-50 to-green-100/50 border border-green-100"
+                    className="flex items-center p-5"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center shadow-sm">
-                      <FaThermometerHalf className="w-6 h-6 text-green-600" />
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shadow-sm">
+                      <FaThermometerHalf className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="ml-5">
                       <h3 className="font-semibold text-gray-900 mb-1">Бытовая техника</h3>
@@ -716,19 +804,19 @@ const PropertyDetailPage: React.FC = () => {
                     </div>
                   </motion.div>
                 )}
-                {property.connectivity && property.connectivity.length > 0 && (
+                {property?.connectivity && property.connectivity.length > 0 && (
                   <motion.div 
                     whileHover={{ scale: 1.02 }}
-                    className="flex items-center p-5 rounded-2xl bg-gradient-to-r from-purple-50 to-purple-100/50 border border-purple-100"
+                    className="flex items-center p-5"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center shadow-sm">
-                      <FaWifi className="w-6 h-6 text-purple-600" />
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shadow-sm">
+                      <MdOutlineWifi className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="ml-5">
                       <h3 className="font-semibold text-gray-900 mb-1">Связь</h3>
                       <div className="flex flex-wrap gap-2">
                         {property.connectivity.map((item, index) => (
-                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
+                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
                             {item}
                           </span>
                         ))}
@@ -744,29 +832,29 @@ const PropertyDetailPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="bg-white rounded-2xl p-6 shadow-lg"
+              className="p-6 overflow-hidden"
             >
               <h2 className="text-xl font-bold mb-4 text-gray-900">Условия проживания</h2>
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className={`w-8 h-8 rounded-full ${property.living_conditions?.includes("children") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
-                    <FaChild className={property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"} />
+                <div className="flex items-center gap-3 p-3 rounded-xl">
+                  <div className={`w-12 h-12 rounded-full ${property?.living_conditions?.includes("children") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
+                    <FaChild className={property?.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"} />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Можно с детьми</div>
-                    <div className={`font-medium ${property.living_conditions?.includes("children") ? "text-green-600" : "text-red-600"}`}>
-                      {property.living_conditions?.includes("children") ? "Разрешено" : "Не разрешено"}
+                    <div className="text-sm font-semibold text-gray-900">Можно с детьми</div>
+                    <div className={`font-medium ${property?.living_conditions?.includes("children") ? "text-gray-600" : "text-gray-600"}`}>
+                      {property?.living_conditions?.includes("children") ? "Разрешено" : "Не разрешено"}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className={`w-8 h-8 rounded-full ${property.living_conditions?.includes("pets") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
-                    <FaPaw className={property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"} />
+                <div className="flex items-center gap-3 p-3 rounded-xl">
+                  <div className={`w-12 h-12 rounded-full ${property?.living_conditions?.includes("pets") ? "bg-green-100" : "bg-red-100"} flex items-center justify-center`}>
+                    <FaPaw className={property?.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"} />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Домашние животные</div>
-                    <div className={`font-medium ${property.living_conditions?.includes("pets") ? "text-green-600" : "text-red-600"}`}>
-                      {property.living_conditions?.includes("pets") ? "Разрешено" : "Не разрешено"}
+                    <div className="text-sm font-semibold text-gray-900">Домашние животные</div>
+                    <div className={`font-medium ${property?.living_conditions?.includes("pets") ? "text-gray-600" : "text-gray-600"}`}>
+                      {property?.living_conditions?.includes("pets") ? "Разрешено" : "Не разрешено"}
                     </div>
                   </div>
                 </div>
@@ -776,183 +864,295 @@ const PropertyDetailPage: React.FC = () => {
 
           {/* Правая колонка */}
           <div className="space-y-6">
-            {/* Карточка с ценой и условиями */}
+            {/* Объединенная секция с ценой, условиями и информацией о пользователе */}
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-2xl p-8 shadow-lg sticky top-6"
+              className="p-8 overflow-hidden sticky top-6"
             >
-              {/* Цена */}
-              <div className="mb-8">
-                <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {formatPrice(property.price)}
-                  </div>
-                  <span className="text-gray-500">/ месяц</span>
-                </div>
-                {currentUserId === property.owner_id && (
-                  <button
-                    onClick={handlePriceUpdate}
-                    className="mt-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Изменить цену
-                  </button>
-                )}
-
-                {/* История изменения цены */}
-                {property.price_history && property.price_history.length > 0 && (
-                  <div className="mt-3 border-t border-gray-100 pt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-xs text-gray-500 font-medium">История изменения цены</div>
-                      <button
-                        onClick={() => setIsPriceHistoryExpanded(!isPriceHistoryExpanded)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                      >
-                        {isPriceHistoryExpanded ? 'Свернуть' : 'Развернуть'}
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className={`h-3 w-3 transform transition-transform ${isPriceHistoryExpanded ? 'rotate-180' : ''}`} 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    </div>
-                    <AnimatePresence>
-                      {isPriceHistoryExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="space-y-2 overflow-hidden"
-                        >
-                          {[...property.price_history].reverse().map((history, index, arr) => {
-                            const oldPrice = history.price;
-                            const newPrice = index === 0 ? property.price : arr[index - 1].price;
-                            const percentChange = ((newPrice - oldPrice) / oldPrice * 100).toFixed(1);
-                            const date = new Date(history.change_date).toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'long'
-                            });
-                            const isIncrease = newPrice > oldPrice;
-
-                            return (
-                              <div key={history.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${isIncrease ? "bg-red-400" : "bg-green-400"}`} />
-                                  <span className="text-[13px] tabular-nums">
-                                    {Math.floor(oldPrice).toLocaleString()} TJS
-                                  </span>
-                                  <FaArrowRight className={`w-3 h-3 ${isIncrease ? "text-red-400" : "text-green-400"}`} />
-                                  <span className="text-[13px] tabular-nums">
-                                    {Math.floor(newPrice).toLocaleString()} TJS
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[13px] font-medium ${isIncrease ? "text-red-500" : "text-green-500"}`}>
-                                    {isIncrease ? "+" : ""}{percentChange}%
-                                  </span>
-                                  <span className="text-[11px] text-gray-400">{date}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
-
-              {/* Условия */}
               <div className="space-y-6">
-                {/* Предоплата и залог */}
-                <div className="grid grid-cols-2 gap-4">
-                  {property.prepayment && (
-                    <div className="bg-gray-50 p-4 rounded-xl">
-                      <span className="block text-sm text-gray-500 mb-1">Предоплата</span>
-                      <span className="font-medium text-gray-900">{property.prepayment}</span>
+                {/* Цена */}
+                <div className="mb-8">
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-3xl font-bold text-blue-600">
+                      {formatPrice(property?.price)}
                     </div>
-                  )}
-                  {property.deposit > 0 && (
-                    <div className="bg-gray-50 p-4 rounded-xl">
-                      <span className="block text-sm text-gray-500 mb-1">Залог</span>
-                      <span className="font-medium text-gray-900">{formatPrice(property.deposit)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Способ связи */}
-                {property.contact_method && property.contact_method.length > 0 && (
-                  <div className="border-t border-gray-100 pt-6">
-                    <span className="block text-sm text-gray-500 mb-3">Способ связи</span>
-                    <div className="flex flex-wrap gap-2">
-                      {property.contact_method.map((method) => (
-                        <span 
-                          key={method} 
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-600"
-                        >
-                          {method === "Чат" ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                          )}
-                          {method}
-                        </span>
-                      ))}
-                    </div>
+                    <span className="text-gray-500">/ месяц</span>
                   </div>
-                )}
-
-                {/* Кнопки связи */}
-                <div className="border-t border-gray-100 pt-6 space-y-3">
-                  <button
-                    onClick={handleContactClick}
-                    className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center"
-                  >
-                    {showPhone ? (
-                      <span className="flex items-center">
-                        <span className="text-lg">{property.landlord_contact}</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <span>Показать телефон</span>
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Показываем кнопку "Написать" только если пользователь не владелец объявления */}
-                  {currentUserId !== property.owner_id && (
+                  {currentUserId === property?.owner_id && (
                     <button
-                      onClick={handleStartChat}
-                      className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center gap-2"
+                      onClick={handlePriceUpdate}
+                      className="mt-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                     >
-                      <FaComments size={20} />
-                      <span>Написать</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Изменить цену
                     </button>
                   )}
 
-                  <button
-                    onClick={toggleFavorite}
-                    className={`w-full py-3.5 px-6 rounded-xl font-medium transition-colors duration-200 flex items-center justify-center ${
-                      isFavorite 
-                        ? 'bg-red-50 text-red-600 border-2 border-red-600 hover:bg-red-100' 
-                        : 'bg-white text-gray-600 border-2 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <FaHeart className={`mr-2 ${isFavorite ? 'fill-current' : ''}`} />
-                    {isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
-                  </button>
+                  {/* История изменения цены */}
+                  {property?.price_history && property.price_history.length > 0 && (
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs text-gray-500 font-medium">История изменения цены</div>
+                        <button
+                          onClick={() => setIsPriceHistoryExpanded(!isPriceHistoryExpanded)}
+                          className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                        >
+                          {isPriceHistoryExpanded ? 'Свернуть' : 'Развернуть'}
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className={`h-3 w-3 transform transition-transform ${isPriceHistoryExpanded ? 'rotate-180' : ''}`} 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                      <AnimatePresence>
+                        {isPriceHistoryExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-2 overflow-hidden"
+                          >
+                            {[...property.price_history].reverse().map((history, index, arr) => {
+                              const oldPrice = history.price;
+                              const newPrice = index === 0 ? property.price : arr[index - 1].price;
+                              const percentChange = ((newPrice - oldPrice) / oldPrice * 100).toFixed(1);
+                              const date = new Date(history.change_date).toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long'
+                              });
+                              const isIncrease = newPrice > oldPrice;
+
+                              return (
+                                <div key={history.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${isIncrease ? "bg-red-400" : "bg-green-400"}`} />
+                                    <span className="text-[13px] tabular-nums">
+                                      {Math.floor(oldPrice).toLocaleString()} TJS
+                                    </span>
+                                    <FaArrowRight className={`w-3 h-3 ${isIncrease ? "text-red-400" : "text-green-400"}`} />
+                                    <span className="text-[13px] tabular-nums">
+                                      {Math.floor(newPrice).toLocaleString()} TJS
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[13px] font-medium ${isIncrease ? "text-red-500" : "text-green-500"}`}>
+                                      {isIncrease ? "+" : ""}{percentChange}%
+                                    </span>
+                                    <span className="text-[11px] text-gray-400">{date}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+
+                {/* Условия */}
+                <div className="space-y-6">
+                  {/* Предоплата и залог */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {property?.prepayment && (
+                      <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="mb-1">
+                          <span className="text-sm text-gray-500">Предоплата</span>
+                        </div>
+                        <span className="font-medium text-gray-900">{property.prepayment}</span>
+                      </div>
+                    )}
+                    {property?.deposit > 0 && (
+                      <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="mb-1">
+                          <span className="text-sm text-gray-500">Залог</span>
+                        </div>
+                        <span className="font-medium text-gray-900">{formatPrice(property.deposit)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Способ связи */}
+                  {property?.contact_method && property.contact_method.length > 0 && (
+                    <div className="border-t border-gray-100 pt-6">
+                      <span className="block text-sm text-gray-500 mb-3">Способ связи</span>
+                      <div className="flex flex-wrap gap-2">
+                        {property.contact_method.map((method) => (
+                          <span 
+                            key={method} 
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-600"
+                          >
+                            {method === "Чат" ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                            )}
+                            {method}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Кнопки связи */}
+                  <div className="border-t border-gray-100 pt-6 space-y-3">
+                    <button
+                      onClick={handleContactClick}
+                      className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center"
+                    >
+                      {showPhone ? (
+                        <span className="flex items-center">
+                          <span className="text-lg">{property?.landlord_contact}</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <span>Показать телефон</span>
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Показываем кнопку "Написать" только если пользователь не владелец объявления */}
+                    {currentUserId !== property?.owner_id && (
+                      <button
+                        onClick={handleStartChat}
+                        className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow flex items-center justify-center gap-2"
+                      >
+                        <MdOutlineChat size={20} />
+                        <span>Написать</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={toggleFavorite}
+                      className={`w-full py-3.5 px-6 rounded-xl font-medium transition-colors duration-200 flex items-center justify-center ${
+                        isFavorite 
+                          ? 'bg-red-50 text-red-600 border-2 border-red-600 hover:bg-red-100' 
+                          : 'bg-white text-gray-600 border-2 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <FaHeart className={`mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+                      {isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Информация о пользователе */}
+                <div className="border-t border-gray-100 pt-6">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={(() => {
+                          const avatarUrl = property?.owner?.avatar_url;
+                          if (!avatarUrl) return "/images/placeholder.png";
+                          if (avatarUrl.startsWith('http')) return avatarUrl;
+                          return `/uploads/avatars/${avatarUrl}`;
+                        })()}
+                        alt={property?.owner?.first_name}
+                        className="w-24 h-24 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/images/placeholder.png";
+                        }}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {property?.owner?.first_name} {property?.owner?.last_name}
+                      </h3>
+                      <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                        <span>На сайте с</span>
+                        <span>{property?.owner?.created_at ? new Date(property.owner.created_at).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'long'
+                        }) : 'Не указано'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-6 mt-6">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold text-gray-500">Объявлений:</div>
+                      <div className="text-sm text-gray-900">
+                        {property?.owner?.properties_count || 0}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold text-gray-500">Рейтинг:</div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-900">
+                          {property?.owner?.rating?.toFixed(1) || 'Нет'}
+                        </span>
+                        {property?.owner?.rating && (
+                          <FaStar className="text-yellow-400" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(property?.owner?.reviews_count || 0) > 0 && property?.owner?.reviews && (
+                    <div className="border-t border-gray-100 pt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-900">Отзывы</h4>
+                        {property.owner.id && (
+                          <Link 
+                            href={`/users/${property.owner.id}/reviews`}
+                            className="text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            Все отзывы
+                          </Link>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        {property.owner.reviews.slice(0, 2).map((review) => (
+                          <div key={review.id} className="bg-gray-50 p-4 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                {review.reviewer.avatar_url ? (
+                                  <img 
+                                    src={`${BASE_URL}${review.reviewer.avatar_url}`} 
+                                    alt="Аватар" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-semibold text-gray-600">
+                                    {review.reviewer.first_name?.[0] || '?'}
+                                  </span>
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {review.reviewer.first_name} {review.reviewer.last_name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(review.created_at).toLocaleDateString('ru-RU', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {review.comment}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1004,14 +1204,6 @@ const PropertyDetailPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Заменяем кнопку чата на ссылку */}
-      <Link
-        href={`/chat/${params.id}`}
-        className="fixed bottom-4 right-4 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 transition-colors z-50"
-      >
-        <FaComments className="text-xl" />
-      </Link>
     </div>
   );
 };

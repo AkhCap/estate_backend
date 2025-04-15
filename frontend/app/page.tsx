@@ -9,7 +9,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { formatPrice } from "../lib/utils";
 import Image from 'next/image'; // <<< Добавляем импорт Image из next/image >>>
 import Footer from "../components/Footer"; // <<< Добавляем импорт Footer >>>
-import { CheckCircle, Search, Users, Handshake, Quote } from 'lucide-react'; // Добавляем иконки
+import { CheckCircle, Search, Users, Quote } from 'lucide-react'; // Удаляем Handshake из импорта
 
 // <<< Определяем базовый URL API (лучше через .env.local) >>>
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -342,177 +342,86 @@ export default function HomePage() {
     return (
         <div className="min-h-screen bg-gray-50 text-gray-800 overflow-x-hidden"> {/* Добавляем overflow-x-hidden */}
             {/* Hero Section */}
-            <section className="relative h-[70vh] min-h-[500px] flex items-center justify-center text-white overflow-hidden">
-                {/* Фоновое изображение */}
-                <div
-                    className="absolute inset-0 bg-cover bg-center brightness-[.6]"
-                    style={{
-                        backgroundImage: "url('/dushanbe-night.jpg')", // Убедись, что путь верный
-                    }}
-                />
-                {/* Градиент поверх */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10"></div>
+            <section className="relative h-[70vh] min-h-[500px] flex items-center justify-center bg-gradient-to-br from-blue-900 to-emerald-900">
+                {/* Контент */}
+                <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                        Найди свой идеальный дом
+                    </h1>
+                    <p className="text-lg text-gray-200 mb-8">
+                        Исследуй тысячи предложений недвижимости легко и удобно.
+                    </p>
 
-                {/* Контент Hero */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="relative z-10 container mx-auto px-4 text-center w-full"
-                >
-                    <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight drop-shadow-md">Найди свой идеальный дом</h1>
-                    <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto drop-shadow">Исследуй тысячи предложений недвижимости легко и удобно.</p>
-
-                    {/* Форма поиска - Стили стекла */}
-                    <form
-                        onSubmit={handleSearch}
-                        className="bg-black/20 backdrop-blur-md p-4 md:p-6 rounded-2xl border border-white/30 shadow-xl max-w-5xl mx-auto text-left mt-8"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    {/* Поисковая форма */}
+                    <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                             {/* Локация */}
-                            <div className="lg:col-span-2">
-                                <label htmlFor="location" className="block text-sm font-medium text-gray-200 mb-1">Локация</label>
-                                <div className="relative">
-                                    <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-200" />
-                                    <input
-                                        id="location"
-                                        type="text"
-                                        value={filters.location}
-                                        onChange={(e) => handleFilterChange('location', e.target.value)}
-                                        placeholder="Город, район, улица..."
-                                        className="w-full pl-9 pr-4 py-2.5 bg-white/30 border border-white/40 rounded-lg shadow-sm text-sm text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:bg-white/40 transition duration-200"
-                                    />
+                            <div className="md:col-span-5 relative">
+                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                    <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
                                 </div>
+                                <input
+                                    type="text"
+                                    placeholder="Город, район, улица..."
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    value={filters.location}
+                                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                                />
                             </div>
 
                             {/* Тип сделки */}
-                            <CustomSelect
-                                label="Тип сделки"
-                                options={dealTypes}
-                                value={filters.deal_type}
-                                onChange={(val: string) => handleFilterChange('deal_type', val)}
-                                icon={FaHome}
-                            />
+                            <div className="md:col-span-3 relative">
+                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                    <FaHome className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <select
+                                    className="w-full pl-10 pr-8 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white"
+                                    value={filters.deal_type}
+                                    onChange={(e) => handleFilterChange('deal_type', e.target.value)}
+                                >
+                                    <option>Любой тип</option>
+                                    <option>Купить</option>
+                                    <option>Снять</option>
+                                </select>
+                            </div>
 
                             {/* Комнаты */}
-                            <CustomSelect
-                                label="Комнаты"
-                                options={roomOptions}
-                                value={filters.rooms}
-                                onChange={(val: string) => handleFilterChange('rooms', val)}
-                                icon={FaBed}
-                            />
+                            <div className="md:col-span-2 relative">
+                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                    <FaBed className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <select
+                                    className="w-full pl-10 pr-8 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white"
+                                    value={filters.rooms}
+                                    onChange={(e) => handleFilterChange('rooms', e.target.value)}
+                                >
+                                    <option>Любое</option>
+                                    <option>1</option>
+                                    <option>2</option>
+                                    <option>3</option>
+                                    <option>4+</option>
+                                </select>
+                            </div>
+
+                            {/* Кнопка поиска */}
+                            <div className="md:col-span-2">
+                                <button
+                                    className="w-full px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                >
+                                    <FaSearch className="h-5 w-5" />
+                                    <span>Найти</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Расширенные фильтры - применяем стили к внутренним элементам */}
-                        {showAdvancedFilters && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pt-4 border-t border-white/30 overflow-hidden"
-                            >
-                                {/* Тип недвижимости */}
-                                <CustomSelect
-                                    label="Тип недвижимости"
-                                    options={propertyTypeOptions}
-                                    value={filters.property_type || ''}
-                                    onChange={(val: string) => handleFilterChange('property_type', val)}
-                                />
-                                {/* Ремонт */}
-                                <CustomSelect
-                                    label="Ремонт"
-                                    options={renovationOptions}
-                                    value={filters.renovation || ''}
-                                    onChange={(val: string) => handleFilterChange('renovation', val)}
-                                />
-                                {/* Этаж */}
-                                <RangeInput
-                                    label="Этаж"
-                                    valueMin={filters.floor_min || ''}
-                                    valueMax={filters.floor_max || ''}
-                                    onChangeMin={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('floor_min', e.target.value)}
-                                    onChangeMax={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('floor_max', e.target.value)}
-                                    placeholderMin="От"
-                                    placeholderMax="До"
-                                />
-                                {/* Год постройки */}
-                                <RangeInput
-                                    label="Год постройки"
-                                    valueMin={filters.year_min || ''}
-                                    valueMax={filters.year_max || ''}
-                                    onChangeMin={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('year_min', e.target.value)}
-                                    onChangeMax={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('year_max', e.target.value)}
-                                    placeholderMin="От"
-                                    placeholderMax="До"
-                                />
-                                {/* Цена */}
-                                <RangeInput
-                                    label="Цена (TJS)"
-                                    valueMin={filters.price_min}
-                                    valueMax={filters.price_max}
-                                    onChangeMin={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('price_min', e.target.value)}
-                                    onChangeMax={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('price_max', e.target.value)}
-                                    placeholderMin="От"
-                                    placeholderMax="До"
-                                    icon={FaDollarSign}
-                                />
-                                {/* Площадь */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-200 mb-1">Площадь (м²)</label>
-                                    <div className="relative">
-                                        <FaRulerCombined className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-200" />
-                                        <input
-                                            type="number"
-                                            value={filters.area_min}
-                                            onChange={(e) => handleFilterChange('area_min', e.target.value)}
-                                            placeholder="От"
-                                            className="w-full pl-9 pr-4 py-2.5 bg-white/30 border border-white/40 rounded-lg shadow-sm text-sm text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:bg-white/40 transition duration-200"
-                                        />
-                                    </div>
-                                </div>
-                                
-                                {/* Удобства */}
-                                <div className="md:col-span-2 lg:col-span-4">
-                                    <label className="block text-sm font-medium text-gray-200 mb-2">Удобства</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-2">
-                                        {amenityOptions.map((amenity) => (
-                                            <label key={amenity.value} className="flex items-center space-x-2 cursor-pointer text-sm group">
-                                                <input
-                                                    type="checkbox"
-                                                    value={amenity.value}
-                                                    checked={(filters.amenities || []).includes(amenity.value)}
-                                                    onChange={(e) => handleFilterChange('amenities', e.target.value)}
-                                                    className="rounded border-white/40 bg-transparent text-blue-400 shadow-sm focus:ring-blue-400 focus:ring-offset-0 focus:ring-2 transition duration-200"
-                                                />
-                                                <span className="text-gray-100 group-hover:text-white transition duration-200">{amenity.label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Кнопки управления - обновленные стили */}
-                        <div className="flex flex-col sm:flex-row justify-between items-center pt-5 border-t border-white/30 mt-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                className="flex items-center text-sm font-medium text-white/80 hover:text-white transition duration-200 mb-4 sm:mb-0"
-                            >
-                                {showAdvancedFilters ? <FaChevronUp className="w-3 h-3 mr-1.5" /> : <FaFilter className="w-3 h-3 mr-1.5" />}
-                                {showAdvancedFilters ? 'Меньше фильтров' : 'Больше фильтров'}
-                            </button>
-                            <button
-                                type="submit"
-                                className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-10 py-3 rounded-lg shadow-lg transition duration-300 transform hover:scale-105 font-semibold flex items-center justify-center"
-                            >
-                                <FaSearch className="w-4 h-4 mr-2" />
-                                Найти
+                        {/* Дополнительные фильтры */}
+                        <div className="mt-3 flex justify-center">
+                            <button className="text-gray-600 hover:text-emerald-600 text-sm font-medium transition-colors flex items-center space-x-1">
+                                <span>Больше фильтров</span>
                             </button>
                         </div>
-                    </form>
-                </motion.div>
+                    </div>
+                </div>
             </section>
 
             {/* Информационная секция - добавляем анимацию */}
@@ -590,7 +499,7 @@ export default function HomePage() {
                                 <li className="flex items-start group p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200">
                                     <div className="flex-shrink-0">
                                         <div className="flex items-center justify-center h-11 w-11 rounded-full bg-blue-50 border border-blue-200 group-hover:bg-blue-100 transition-colors duration-200">
-                                            <Handshake className="h-5 w-5 text-blue-600" />
+                                            <Quote className="h-5 w-5 text-blue-600" />
                                         </div>
                                     </div>
                                     <div className="ml-4">
@@ -715,19 +624,17 @@ export default function HomePage() {
                                                             Просмотрено
                                                         </div>
                                                     )}
-                                                    {user && (
-                                                        <button
-                                                            onClick={(e) => toggleFavorite(e, property.id)}
-                                                            className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${ 
-                                                                favorites.has(property.id)
-                                                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                                : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                                            } shadow-lg z-10`}
-                                                            aria-label={favorites.has(property.id) ? "Удалить из избранного" : "Добавить в избранное"}
-                                                        >
-                                                            <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        onClick={(e) => toggleFavorite(e, property.id)}
+                                                        className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${ 
+                                                            favorites.has(property.id)
+                                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                            : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                                        } shadow-lg z-10`}
+                                                        aria-label={favorites.has(property.id) ? "Удалить из избранного" : "Добавить в избранное"}
+                                                    >
+                                                        <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
+                                                    </button>
                                                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
                                                         <p className="text-white text-xl font-bold">
                                                             {formatPrice(property.price)}

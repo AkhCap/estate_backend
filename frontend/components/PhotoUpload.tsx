@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { FaImages, FaTimes } from 'react-icons/fa';
+import { FaImages, FaTimes, FaStar } from 'react-icons/fa';
 import Image from 'next/image';
 
 interface ExistingPhoto {
@@ -12,7 +12,10 @@ interface PhotoUploadProps {
   photos: File[];
   onDelete: (index: number) => void;
   existingPhotos?: ExistingPhoto[];
-  onExistingPhotoDelete?: (photoId: number) => void;
+  onExistingPhotoDelete?: (id: number) => void;
+  onSetMainPhoto?: (id: number) => void;
+  mainPhotoIndex?: number;
+  onSetMainPhotoForNew?: (index: number) => void;
 }
 
 const PhotoUpload: React.FC<PhotoUploadProps> = ({ 
@@ -20,7 +23,10 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
   photos, 
   onDelete,
   existingPhotos = [],
-  onExistingPhotoDelete
+  onExistingPhotoDelete,
+  onSetMainPhoto,
+  mainPhotoIndex,
+  onSetMainPhotoForNew
 }) => {
   console.log('PhotoUpload render - all props:', {
     photosCount: photos.length,
@@ -117,13 +123,29 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                     className="object-cover rounded-lg border border-gray-200"
                     unoptimized
                   />
+                  {mainPhotoIndex === index && (
+                    <div className="absolute top-2 left-2 bg-green-500/80 text-white px-2 py-1 rounded-lg text-xs">
+                      Главное фото
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => onDelete(index)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                >
-                  <FaTimes className="h-5 w-5" />
-                </button>
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <button
+                    onClick={() => onDelete(index)}
+                    className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                  >
+                    <FaTimes className="h-5 w-5" />
+                  </button>
+                  {onSetMainPhotoForNew && mainPhotoIndex !== index && (
+                    <button
+                      onClick={() => onSetMainPhotoForNew(index)}
+                      className="bg-blue-500 text-white p-1 rounded-full hover:bg-blue-600"
+                      title="Сделать главным"
+                    >
+                      <FaStar className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

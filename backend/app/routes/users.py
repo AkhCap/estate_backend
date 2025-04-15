@@ -48,27 +48,33 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    try:
-        print(f"Получены данные для входа: username={form_data.username}, password=***")  # Логируем полученные данные
-        
-        user = crud.authenticate_user(db, form_data.username, form_data.password)
-        if not user:
-            print("Пользователь не найден или неверный пароль")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Неверный email или пароль",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        print(f"Пользователь найден: {user.email}")
-        access_token = auth.create_access_token(
-            data={"sub": user.email},
-            expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    print(f"Получены данные для входа: username={form_data.username}, password=***")
+    
+    # Сначала проверяем существование пользователя
+    user = crud.get_user_by_email(db, form_data.username)
+    if not user:
+        print(f"Пользователь с email {form_data.username} не найден")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Пользователь с таким email не найден",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-        return {"access_token": access_token, "token_type": "bearer"}
-    except Exception as e:
-        print(f"Ошибка при входе: {str(e)}")
-        logger.error(f"Ошибка при входе: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    # Затем проверяем пароль
+    if not auth.verify_password(form_data.password, user.hashed_password):
+        print(f"Неверный пароль для пользователя {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный пароль",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    print(f"Пользователь найден и пароль верный: {user.email}")
+    access_token = auth.create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # --- Профиль пользователя ---
 
@@ -143,119 +149,13 @@ def read_my_properties(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     return [schemas.PropertyOut.model_validate(prop) for prop in user.properties]
 
-# --- Работа с избранным ---
-
-@router.post("/favorites", response_model=schemas.FavoriteOut, summary="Add property to favorites")
-def add_favorite(
-    favorite: schemas.FavoriteCreate,
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    property_exists = crud.get_property(db, property_id=favorite.property_id)
-    if not property_exists:
-        raise HTTPException(status_code=404, detail="Объявление не найдено")
-    existing = crud.get_favorite_by_user_and_property(db, user_id=user.id, property_id=favorite.property_id)
-    if existing:
-        return schemas.FavoriteOut.model_validate(existing)
-    fav = crud.add_to_favorites(db, user_id=user.id, property_id=favorite.property_id)
-    return schemas.FavoriteOut.model_validate(fav)
-
-@router.get("/favorites", response_model=List[schemas.FavoriteOut], summary="List favorites")
-def list_favorites(
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    favorites = crud.get_favorites(db, user_id=user.id)
-    return [schemas.FavoriteOut.model_validate(fav) for fav in favorites]
-
-@router.delete("/favorites/{property_id}", summary="Remove property from favorites")
-def remove_favorite(
-    property_id: int,
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    fav = crud.get_favorite_by_user_and_property(db, user_id=user.id, property_id=property_id)
-    if not fav:
-        raise HTTPException(status_code=404, detail="Объявление не найдено в избранном")
-    crud.remove_from_favorites(db, user_id=user.id, property_id=property_id)
-    return {"detail": "Объявление удалено из избранного"}
-
-@router.get("/me/history", response_model=List[schemas.HistoryOut])
-def read_user_history(
-    current_user: str = Depends(auth.get_current_user),
-    db: Session = Depends(get_db)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    history = crud.get_history_by_user(db, user_id=user.id)
-    return [schemas.HistoryOut.model_validate(h) for h in history]
-
-@router.delete("/me/history/{history_id}", summary="Remove item from history")
-def remove_from_history(
-    history_id: int,
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    # Сначала находим запись, чтобы получить property_id
-    history_item = db.query(models.History).filter(
-        models.History.id == history_id,
-        models.History.user_id == user.id
-    ).first()
-    
-    if not history_item:
-        raise HTTPException(status_code=404, detail="Запись не найдена в истории")
-    
-    # Удаляем все записи для этого объявления
-    db.query(models.History).filter(
-        models.History.user_id == user.id,
-        models.History.property_id == history_item.property_id
-    ).delete()
-    
-    db.commit()
-    return {"detail": "Запись удалена из истории"}
-
-@router.delete("/me/history", summary="Clear all history")
-def clear_history(
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
-):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    # Удаляем все записи истории для данного пользователя
-    db.query(models.History).filter(models.History.user_id == user.id).delete()
-    db.commit()
-    
-    return {"detail": "История просмотров очищена"}
-
 # --- НОВЫЙ ЭНДПОИНТ: Получение публичной информации о пользователе по ID --- 
-@router.get("/{user_id}", response_model=schemas.UserPublicOut) # Используем новую схему
+@router.get("/{user_id}", response_model=schemas.UserPublicOut)
 async def get_user_public_profile(user_id: int, db: Session = Depends(get_db)):
     """
     Возвращает публичную информацию о пользователе по его ID.
-    Не требует аутентификации.
     """
-    logger.info(f"Fetching public profile for user_id: {user_id}")
-    user = crud.get_user(db, user_id=user_id) # Предполагаем, что есть crud.get_user
+    user = crud.get_user(db, user_id=user_id)
     if not user:
-        logger.warning(f"Public profile requested for non-existent user_id: {user_id}")
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    # Важно: Не возвращайте email, пароль и т.д.!
-    # Используйте специальную Pydantic схему UserPublicOut
     return schemas.UserPublicOut.model_validate(user)

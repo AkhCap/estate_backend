@@ -141,7 +141,7 @@ export default function HistoryPage() {
       }
       const [userResponse, historyResponse] = await Promise.all([
         axios.get('/users/me'),
-        axios.get("/users/me/history")
+        axios.get("/history")
       ]);
       setCurrentUserId(userResponse.data.id);
       const filteredHistory = historyResponse.data.filter(
@@ -188,7 +188,7 @@ export default function HistoryPage() {
 
   const clearHistory = async () => {
     try {
-      await axios.delete("/users/me/history");
+      await axios.delete("/history");
       setHistory([]);
     } catch (err: any) {
       console.error("Error clearing history:", err);
@@ -198,7 +198,7 @@ export default function HistoryPage() {
 
   const removeFromHistory = async (historyId: number) => {
     try {
-      await axios.delete(`/users/me/history/${historyId}`);
+      await axios.delete(`/history/${historyId}`);
       setHistory(history.filter(item => item.id !== historyId));
     } catch (err: any) {
       console.error(err);

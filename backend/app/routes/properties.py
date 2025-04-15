@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models import Property, PropertyImage, PropertyViews
+from app.models import Property, PropertyImage, PropertyViews, User
 from app import crud, auth, models
 import shutil
 import os
@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 # Импортируем Pydantic-схемы
-from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut, HistoryCreate, PropertyUpdate
+from app.schemas import PropertyCreate, PropertyOut, PropertyImageOut, HistoryCreate, PropertyUpdate, UserOut
 
 router = APIRouter()
 
@@ -74,16 +74,31 @@ async def get_properties_list(
 
 @router.post("/", response_model=PropertyOut)
 async def create_property(
-    property_data: PropertyCreate, 
-    db: Session = Depends(get_db),
-    current_user: str = Depends(auth.get_current_user)
+    property_data: PropertyCreate,
+    user: str = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
 ):
-    user = crud.get_user_by_email(db, email=current_user)
-    if not user:
+    db_user = crud.get_user_by_email(db, email=user)
+    if not db_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Проверяем существование похожего объявления
+    existing_property = db.query(Property)\
+        .filter(
+            Property.owner_id == db_user.id,
+            Property.title == property_data.title,
+            Property.address == property_data.address,
+            Property.price == property_data.price
+        ).first()
     
+    if existing_property:
+        raise HTTPException(
+            status_code=400,
+            detail="Похожее объявление уже существует"
+        )
+
     property_dict = property_data.model_dump()
-    property_dict["owner_id"] = user.id
+    property_dict["owner_id"] = db_user.id
     property_dict["created_at"] = datetime.utcnow()
     new_property = Property(**property_dict)
     db.add(new_property)
@@ -109,15 +124,19 @@ async def get_property(
         if user:
             user_id = user.id
     
-    # Загружаем объявление со всеми связанными данными, включая владельца
+    # Загружаем объявление со всеми связанными данными, включая владельца и его свойства
     prop = db.query(Property).options(
         joinedload(Property.images),
         joinedload(Property.price_history),
-        joinedload(Property.owner)
+        joinedload(Property.owner).joinedload(User.properties)
     ).filter(Property.id == property_id).first()
     
     if not prop:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
+    
+    # Подсчитываем количество объявлений владельца
+    if prop.owner:
+        prop.owner.properties_count = len(prop.owner.properties)
     
     # По умолчанию устанавливаем is_viewed в False
     prop.is_viewed = False
@@ -307,3 +326,50 @@ async def delete_property_image(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Ошибка при удалении изображения: {str(e)}")
+
+@router.post("/{property_id}/images/{image_id}/set-main")
+async def set_property_main_image(
+    property_id: str,
+    image_id: str,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    """
+    Установка главного изображения для объявления.
+    Требует аутентификации и прав владельца объявления.
+    """
+    try:
+        # Получаем текущего пользователя
+        user = crud.get_user_by_email(db, email=current_user)
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        # Получаем объявление
+        property = crud.get_property(db, property_id)
+        if not property:
+            raise HTTPException(status_code=404, detail="Объявление не найдено")
+
+        # Проверяем права пользователя
+        if property.owner_id != user.id:
+            raise HTTPException(status_code=403, detail="Нет прав для редактирования этого объявления")
+
+        # Сбрасываем флаг главного изображения у всех изображений объявления
+        db.query(PropertyImage).filter(
+            PropertyImage.property_id == property_id
+        ).update({"is_main": False})
+
+        # Устанавливаем новое главное изображение
+        image = db.query(PropertyImage).filter(
+            PropertyImage.id == image_id,
+            PropertyImage.property_id == property_id
+        ).first()
+
+        if not image:
+            raise HTTPException(status_code=404, detail="Изображение не найдено")
+
+        image.is_main = True
+        db.commit()
+
+        return {"message": "Главное изображение успешно установлено"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
