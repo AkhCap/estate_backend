@@ -26,41 +26,42 @@ class ChatBase(BaseModel):
 class ChatCreate(ChatBase):
     pass
 
-class ChatResponse(ChatBase):
+class ParticipantDetail(BaseModel):
+    user_id: int
+    username: str = ""
+    full_name: str
+    avatar_url: Optional[str] = None
+    last_read_at: Optional[datetime] = None
+    joined_at: Optional[datetime] = None
+
+class ChatResponse(BaseModel):
     id: str
+    property_id: int
     created_at: datetime
     updated_at: datetime
     is_archived: bool
     property_title: Optional[str] = None
     property_image: Optional[str] = None
+    participants: List[ParticipantDetail]
 
 class ChatListDetail(BaseModel):
     id: str
     property_id: int
-    participants: List[int]
-    created_at: datetime
-    updated_at: datetime
-    is_archived: bool
     property_title: Optional[str] = None
     property_image: Optional[str] = None
-    participant_name: Optional[str] = None
+    participants: List[ParticipantDetail]
     last_message: Optional[str] = None
     last_message_time: Optional[datetime] = None
-    unread_count: Optional[int] = 0
+    unread_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+    is_archived: bool = False
 
 class ChatListResponse(BaseModel):
     chats: List[ChatListDetail]
-    total: int
+    total: Optional[int] = None
 
 class ChatMessageListResponse(BaseModel):
     messages: List[MessageResponse]
     total: int
     has_more: bool
-
-class ParticipantDetail(BaseModel):
-    id: int
-    name: str
-    email: str
-    avatar: str
-    lastSeen: str
-    isOnline: bool

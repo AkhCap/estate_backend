@@ -104,17 +104,29 @@ async def message(sid, data):
     if chat_id and sender_id:
         try:
             from app.services.chat_service import save_and_emit_message
+            from app.services.postgres_service import PostgresChatService
+            from app.db.session import async_session
+            
             print(f"Attempting to save and emit message for chat {chat_id} from user {sender_id}")
-            message_response = await save_and_emit_message(
-                sio=sio,
-                chat_id=chat_id,
-                sender_id=sender_id,
-                content=data.get('content', ''),
-                temp_id=data.get('temp_id')
-            )
+            
+            # Создаем сессию и PostgresChatService
+            async with async_session() as session:
+                postgres_service = PostgresChatService(session)
+                
+                message_response = await save_and_emit_message(
+                    sio=sio,
+                    chat_id=chat_id,
+                    sender_id=sender_id,
+                    content=data.get('content', ''),
+                    temp_id=data.get('temp_id'),
+                    postgres_service=postgres_service
+                )
+                
             print(f"Message saved and emitted successfully. Response: {message_response}")
         except Exception as e:
             print(f"Error saving/emitting message: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             # В случае ошибки все равно ретранслируем сообщение
             await sio.emit('message', data, room=chat_id)
     else:
@@ -132,15 +144,25 @@ async def send_message(sid, data):
     if chat_id and sender_id:
         try:
             from app.services.chat_service import save_and_emit_message
+            from app.services.postgres_service import PostgresChatService
+            from app.db.session import async_session
+            
             print(f"[DEBUG] Calling save_and_emit_message with data: {data}")
-            message_response = await save_and_emit_message(
-                sio=sio,
-                chat_id=chat_id,
-                sender_id=sender_id,
-                content=data.get('content', ''),
-                message_type=data.get('message_type', 'text'),
-                temp_id=data.get('temp_id')
-            )
+            
+            # Создаем сессию и PostgresChatService
+            async with async_session() as session:
+                postgres_service = PostgresChatService(session)
+                
+                message_response = await save_and_emit_message(
+                    sio=sio,
+                    chat_id=chat_id,
+                    sender_id=sender_id,
+                    content=data.get('content', ''),
+                    message_type=data.get('message_type', 'text'),
+                    temp_id=data.get('temp_id'),
+                    postgres_service=postgres_service
+                )
+                
             print(f"[DEBUG] Message saved and emitted successfully. Response: {message_response}")
         except Exception as e:
             print(f"[ERROR] Error in send_message handler: {str(e)}")

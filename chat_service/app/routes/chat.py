@@ -24,6 +24,8 @@ from app.core.redis import redis_client
 from app.core.auth import get_current_user_id
 from app.core.http_client import http_client
 from app.services.chat_service import save_and_emit_message # <-- Импортируем только нужный импорт
+from app.services.postgres_service import PostgresChatService
+from app.dependencies import get_postgres_chat_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,8 +104,8 @@ async def fetch_property_details(property_id: int) -> Optional[dict]:
 
         # Возвращаем словарь с нужными полями, ВКЛЮЧАЯ owner_id
         result_dict = {
-            "property_title": details.get("title"),
-            "property_image_filename": image_filename,
+            "title": details.get("title"),
+            "image": image_filename,
             "owner_id": owner_id
         }
         return result_dict
@@ -115,7 +117,6 @@ async def fetch_property_details(property_id: int) -> Optional[dict]:
         return None
 
 # --- Вспомогательная функция для получения данных о пользователе --- 
-# (Перемещаем ее определение сюда, ДО get_current_user_id и create_chat)
 async def fetch_user_details(user_id: int) -> Optional[dict]:
     logger.info(f"Fetching details for user {user_id} from main backend")
     try:
@@ -124,9 +125,9 @@ async def fetch_user_details(user_id: int) -> Optional[dict]:
         response.raise_for_status()
         user_details = response.json()
         
-        first_name = user_details.get("first_name")
-        last_name = user_details.get("last_name")
-        full_name = "Неизвестный пользователь"
+        first_name = user_details.get("first_name", "")
+        last_name = user_details.get("last_name", "")
+        full_name = ""
         if first_name and last_name:
             full_name = f"{first_name} {last_name}"
         elif first_name:
@@ -134,7 +135,13 @@ async def fetch_user_details(user_id: int) -> Optional[dict]:
         elif last_name:
             full_name = last_name
             
-        return {"full_name": full_name}
+        return {
+            "full_name": full_name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "avatar": user_details.get("avatar"),
+            "email": user_details.get("email")
+        }
         
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error fetching user {user_id}: {e.response.status_code} - {e.response.text}")
@@ -162,89 +169,153 @@ async def get_current_user_id(authorization: Optional[str] = Header(None)) -> in
         raise HTTPException(status_code=401, detail=str(e))
 
 @router.get("/me", response_model=ChatListResponse)
-async def get_my_chats(request: Request, current_user_id: int = Depends(get_current_user_id)):
-    logger.info(f"[get_my_chats] <<< Starting request for user {current_user_id} >>>")
-    chats = []
-    user_chats_key = f"user:{current_user_id}:chats"
-    chat_ids = redis_client.smembers(user_chats_key)
-
-    for chat_id in chat_ids:
-        chat_key = f"chat:{chat_id}"
-        participants_key = f"chat:{chat_id}:participants"
+async def get_my_chats(
+    request: Request,
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
+):
+    try:
+        logger.info(f"User {current_user_id} getting their chats")
+        chats = []
         
-        chat_data = redis_client.hgetall(chat_key)
-        participants_ids_str = redis_client.smembers(participants_key)
-        participants = {int(p) for p in participants_ids_str if p.isdigit()}
-
-        if chat_data and len(participants) == 2 and current_user_id in participants:
-            owner_id_str = chat_data.get("owner_id")
-            owner_name_redis = chat_data.get("owner_name")
-            buyer_id_str = chat_data.get("buyer_id")
-            buyer_name_redis = chat_data.get("buyer_name")
-            
-            participant_name = "Собеседник"
-            
-            other_user_id = next((p for p in participants if p != current_user_id), None)
-
-            if other_user_id:
-                owner_id = 0
-                buyer_id = 0
-                try:
-                    if owner_id_str: owner_id = int(owner_id_str)
-                    if buyer_id_str: buyer_id = int(buyer_id_str)
-                except (ValueError, TypeError): pass
-                
-                owner_name = owner_name_redis if owner_name_redis else None
-                buyer_name = buyer_name_redis if buyer_name_redis else None
-
-                if other_user_id == owner_id:
-                    participant_name = owner_name if owner_name else "Владелец"
-                elif other_user_id == buyer_id:
-                    participant_name = buyer_name if buyer_name else "Покупатель"
-                else:
-                    logger.warning(f"[get_my_chats] Could not match other_user_id {other_user_id} to owner {owner_id} or buyer {buyer_id}. Data inconsistency?")
-                    if current_user_id == buyer_id and owner_name:
-                         participant_name = owner_name
-                    elif current_user_id == owner_id and buyer_name:
-                         participant_name = buyer_name
-                    else:
-                         participant_name = "Собеседник (?)"
-            else:
-                logger.error(f"[get_my_chats] Could not determine other user ID for current user {current_user_id} in participants {participants}")
-                participant_name = "Собеседник (Error)" 
-                 
-            image_url = get_full_image_url(chat_data.get("property_image"))
-            last_msg_content = chat_data.get("last_message")
-            last_msg_time_str = chat_data.get("last_message_time")
-            last_msg_time = datetime.fromisoformat(last_msg_time_str) if last_msg_time_str else None
-            sorted_participants = sorted(list(participants))
-            user_index = 1 if current_user_id == sorted_participants[0] else 2
-            unread_count_key = f"unread_count_user{user_index}"
-            unread_count = int(chat_data.get(unread_count_key, 0))
-            
-            chat_detail = ChatListDetail(
-                 id=chat_id,
-                 property_id=int(chat_data.get("property_id", -1)),
-                 participants=list(participants),
-                 created_at=make_aware(datetime.fromisoformat(chat_data.get("created_at", datetime.min.isoformat()))),
-                 updated_at=make_aware(datetime.fromisoformat(chat_data.get("updated_at", datetime.min.isoformat()))),
-                 is_archived=chat_data.get("is_archived") == 'True',
-                 property_title=chat_data.get("property_title"),
-                 property_image=image_url,
-                 participant_name=participant_name, 
-                 last_message=last_msg_content if last_msg_content else None,
-                 last_message_time=make_aware(last_msg_time) if last_msg_time else None,
-                 unread_count=unread_count
+        # Получаем чаты из PostgreSQL
+        try:
+            db_chats = await postgres_service.get_user_chats(current_user_id)
+            logger.info(f"Found {len(db_chats)} chats in PostgreSQL for user {current_user_id}")
+        except Exception as db_error:
+            logger.error(f"Error getting chats from PostgreSQL: {db_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error while fetching chats"
             )
-            chats.append(chat_detail)
-        else:
-             logger.warning(f"[get_my_chats] Chat data or participants not found for chat_id {chat_id} in user {current_user_id}'s list. Removing orphan ID.")
-             redis_client.srem(user_chats_key, chat_id)
-            
-    chats.sort(key=lambda x: make_aware(x.updated_at), reverse=True)
-
-    logger.info(f"Returning {len(chats)} chats for user {current_user_id}")
-    return ChatListResponse(chats=chats, total=len(chats))
+        
+        for chat in db_chats:
+            try:
+                chat_id = str(chat.id)
+                chat_key = f"chat:{chat_id}"
+                participants_key = f"chat:{chat_id}:participants"
+                
+                # Получаем или создаем данные в Redis
+                try:
+                    chat_data = redis_client.hgetall(chat_key)
+                    if not chat_data:
+                        # Если данных нет в Redis, создаем их
+                        chat_data = {
+                            "property_id": str(chat.property_id),
+                            "property_title": chat.property_title or "",
+                            "property_image": chat.property_image or "",
+                            "created_at": chat.created_at.isoformat() if chat.created_at else datetime.now(timezone.utc).isoformat(),
+                            "updated_at": chat.updated_at.isoformat() if chat.updated_at else datetime.now(timezone.utc).isoformat(),
+                            "is_archived": str(chat.is_archived).lower(),
+                            "unread_count_user1": "0",
+                            "unread_count_user2": "0"
+                        }
+                        redis_client.hmset(chat_key, chat_data)
+                except Exception as redis_error:
+                    logger.error(f"Redis error for chat {chat_id}: {redis_error}")
+                    continue
+                
+                # Получаем участников
+                try:
+                    participants = []
+                    for participant in chat.participants:
+                        participants.append(participant.user_id)
+                        redis_client.sadd(participants_key, str(participant.user_id))
+                except Exception as participant_error:
+                    logger.error(f"Error processing participants for chat {chat_id}: {participant_error}")
+                    continue
+                
+                if chat_data and participants:
+                    logger.debug(f"Processing chat {chat_id} data: {chat_data}")
+                    
+                    # Безопасное получение времени последнего сообщения
+                    try:
+                        last_msg_content = chat_data.get("last_message")
+                        last_msg_time_str = chat_data.get("last_message_time")
+                        last_msg_time = None
+                        if last_msg_time_str:
+                            try:
+                                last_msg_time = datetime.fromisoformat(last_msg_time_str)
+                            except ValueError:
+                                logger.warning(f"Invalid last_message_time format in Redis for chat {chat_id}")
+                    except Exception as msg_time_error:
+                        logger.error(f"Error processing message time for chat {chat_id}: {msg_time_error}")
+                        last_msg_content = None
+                        last_msg_time = None
+                    
+                    # Получаем счетчик непрочитанных
+                    try:
+                        sorted_participants = sorted(participants)
+                        user_index = 1 if current_user_id == sorted_participants[0] else 2
+                        unread_count = int(chat_data.get(f"unread_count_user{user_index}", 0))
+                    except Exception as unread_error:
+                        logger.error(f"Error getting unread count for chat {chat_id}: {unread_error}")
+                        unread_count = 0
+                    
+                    # Получаем детали участников
+                    participants_details = []
+                    for participant_id in participants:
+                        try:
+                            user_details = await fetch_user_details(participant_id)
+                            if user_details:
+                                participants_details.append(ParticipantDetail(
+                                    user_id=participant_id,
+                                    username=user_details.get("username", ""),
+                                    full_name=user_details.get("full_name", ""),
+                                    avatar_url=get_full_image_url(user_details.get("avatar_url")),
+                                    last_read_at=None
+                                ))
+                        except Exception as user_details_error:
+                            logger.error(f"Error fetching user details for participant {participant_id}: {user_details_error}")
+                            continue
+                    
+                    # Получаем и проверяем URL изображения
+                    try:
+                        image_url = get_full_image_url(chat_data.get("property_image"))
+                    except Exception as image_error:
+                        logger.error(f"Error processing image URL for chat {chat_id}: {image_error}")
+                        image_url = None
+                    
+                    try:
+                        chat_detail = ChatListDetail(
+                            id=chat_id,
+                            property_id=int(chat_data.get("property_id", -1)),
+                            property_title=chat_data.get("property_title", ""),
+                            property_image=image_url,
+                            participants=participants_details,
+                            created_at=make_aware(datetime.fromisoformat(chat_data.get("created_at", datetime.now(timezone.utc).isoformat()))),
+                            updated_at=make_aware(datetime.fromisoformat(chat_data.get("updated_at", datetime.now(timezone.utc).isoformat()))),
+                            is_archived=chat_data.get("is_archived", "false").lower() == "true",
+                            last_message=last_msg_content,
+                            last_message_time=make_aware(last_msg_time) if last_msg_time else None,
+                            unread_count=unread_count
+                        )
+                        chats.append(chat_detail)
+                    except Exception as chat_detail_error:
+                        logger.error(f"Error creating ChatListDetail for chat {chat_id}: {chat_detail_error}")
+                        continue
+                else:
+                    logger.warning(f"Chat data or participants not found for chat_id {chat_id}")
+                    
+            except Exception as chat_error:
+                logger.error(f"Error processing chat {chat.id}: {chat_error}")
+                continue
+                
+        # Сортируем чаты по времени последнего обновления
+        try:
+            chats.sort(key=lambda x: make_aware(x.updated_at), reverse=True)
+        except Exception as sort_error:
+            logger.error(f"Error sorting chats: {sort_error}")
+        
+        logger.info(f"Returning {len(chats)} chats for user {current_user_id}")
+        return ChatListResponse(chats=chats, total=len(chats))
+        
+    except Exception as e:
+        logger.exception(f"Error getting user chats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 @router.get("/{user_id}", response_model=ChatListResponse)
 async def get_user_chats(user_id: int, request: Request, current_user_id: int = Depends(get_current_user_id)):
@@ -312,158 +383,137 @@ async def get_user_chats(user_id: int, request: Request, current_user_id: int = 
     return ChatListResponse(chats=chats, total=len(chats))
 
 @router.post("", response_model=ChatResponse)
-async def create_chat(chat_data: ChatCreate, request: Request, current_user_id: int = Depends(get_current_user_id)):
-    logger.info(f"[create_chat] <<< Starting chat creation for property {chat_data.property_id} by user {current_user_id} >>>")
-    # Проверка, что участники переданы и их двое (если это ожидается)
-    if not chat_data.participants or len(chat_data.participants) != 2:
-         logger.error(f"[create_chat] Invalid participants list: {chat_data.participants}")
-         raise HTTPException(status_code=400, detail="Необходимо передать ровно двух участников чата.")
-
-    # Проверка, что текущий пользователь является одним из участников
-    if current_user_id not in chat_data.participants:
-         logger.warning(f"[create_chat] User {current_user_id} trying to create chat they are not part of: {chat_data.participants}")
-         raise HTTPException(status_code=403, detail="Вы не можете создать чат, в котором не участвуете.")
-
+async def create_chat(
+    chat_data: ChatCreate,
+    request: Request,
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
+):
     try:
-        # --- Шаг 1: Проверка существующего чата --- 
-        # Используем участников из chat_data, а не вычисляем buyer_id позже
-        user1_id, user2_id = sorted(chat_data.participants)
-        lookup_key = f"lookup_chat:{chat_data.property_id}:{user1_id}:{user2_id}"
-        logger.info(f"[create_chat] Checking lookup key: {lookup_key}")
-        existing_chat_id = redis_client.get(lookup_key)
+        logger.info(f"Creating chat for property {chat_data.property_id} with participants {chat_data.participants}")
         
-        if existing_chat_id:
-            logger.info(f"[create_chat] Found existing chat {existing_chat_id}, returning it.")
-            chat_key = f"chat:{existing_chat_id}"
-            existing_chat_data = redis_client.hgetall(chat_key)
-            if not existing_chat_data:
-                 logger.error(f"[create_chat] Lookup key found chat {existing_chat_id}, but chat data is missing in {chat_key}.")
-                 # Удаляем невалидный lookup ключ
-                 redis_client.delete(lookup_key)
-                 # Продолжаем создание нового чата вместо ошибки 500
-                 logger.warning(f"[create_chat] Proceeding to create a new chat instead of returning missing existing chat.")
-            else:
-                # Возвращаем данные существующего чата, соответствующие ChatResponse
-                return ChatResponse(
-                    id=existing_chat_id,
-                    property_id=int(existing_chat_data.get("property_id", chat_data.property_id)),
-                    participants=sorted([int(p) for p in redis_client.smembers(f"chat:{existing_chat_id}:participants")]) or [user1_id, user2_id],
-                    created_at=datetime.fromisoformat(existing_chat_data.get("created_at", datetime.now().isoformat())),
-                    updated_at=datetime.fromisoformat(existing_chat_data.get("updated_at", datetime.now().isoformat())),
-                    is_archived=existing_chat_data.get("is_archived") == 'True',
-                    property_title=existing_chat_data.get("property_title"),
-                    property_image=existing_chat_data.get("property_image") # URL уже должен быть полным при сохранении
-                )
+        # Проверяем, что текущий пользователь в списке участников
+        if current_user_id not in chat_data.participants:
+            logger.warning(f"User {current_user_id} not in participants list {chat_data.participants}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Current user must be in participants list"
+            )
 
-        # --- Шаг 2: Получение деталей недвижимости (owner_id) --- 
-        logger.info(f"[create_chat] Fetching property details for {chat_data.property_id}")
-        property_details = await fetch_property_details(chat_data.property_id)
-        logger.info(f"[create_chat] Property details result: {property_details}")
-        if not property_details:
-            logger.error("[create_chat] Failed to get property details (fetch_property_details returned None).")
-            raise HTTPException(status_code=400, detail="Не удалось получить информацию об объекте недвижимости")
-            
-        try:
-            owner_id = property_details["owner_id"]
-        except KeyError:
-            logger.error(f"[create_chat] Missing 'owner_id' key in property_details: {property_details}")
-            raise HTTPException(status_code=500, detail="Ошибка обработки данных недвижимости: отсутствует ID владельца")
-
-        # Проверяем, что один из участников - это владелец
-        if owner_id not in chat_data.participants:
-             logger.error(f"[create_chat] Owner ID {owner_id} from property details is not in the provided participants list {chat_data.participants}")
-             raise HTTPException(status_code=400, detail="Владелец объекта не является участником чата.")
-        
-        # Проверяем, что текущий пользователь не владелец (уже должно быть проверено выше, но дублируем)
-        if current_user_id == owner_id:
-             logger.warning(f"[create_chat] User {current_user_id} is the owner {owner_id}, cannot create chat.")
-             raise HTTPException(status_code=400, detail="Владелец не может создать чат сам с собой по своему объекту.")
-             
-        property_title = property_details.get("property_title")
-        image_filename = property_details.get("property_image_filename")
-        full_image_url = get_full_image_url(image_filename) # Формируем полный URL здесь
-        logger.info(f"[create_chat] Property details processed: owner_id={owner_id}, title='{property_title}'")
-
-        # --- Шаг 3: Определение и получение деталей участников --- 
-        buyer_id = next((p for p in chat_data.participants if p != owner_id), None)
-        # Эта проверка лишняя, т.к. мы проверили owner_id in participants и len(participants) == 2
-        # if not buyer_id: ... 
-
-        logger.info(f"[create_chat] Fetching details for owner {owner_id} and buyer {buyer_id}...")
-        owner_details = await fetch_user_details(owner_id)
-        buyer_details = await fetch_user_details(buyer_id)
-        owner_name = owner_details.get("full_name") if owner_details else "Владелец"
-        buyer_name = buyer_details.get("full_name") if buyer_details else "Покупатель"
-        logger.info(f"[create_chat] Names determined: Owner='{owner_name}', Buyer='{buyer_name}'")
-
-        # --- Шаг 4: Подготовка данных для Redis --- 
-        chat_id = str(uuid.uuid4())
-        chat_key = f"chat:{chat_id}"
-        participants_key = f"chat:{chat_id}:participants"
-        now = datetime.now()
-        now_iso = now.isoformat()
-        chat_to_save = { 
-            "property_id": chat_data.property_id,
-            "owner_id": owner_id,
-            "buyer_id": buyer_id,
-            "owner_name": owner_name,
-            "buyer_name": buyer_name,
-            "created_at": now_iso,
-            "updated_at": now_iso,
-            "is_archived": 'False',
-            "property_title": property_title or "",
-            "property_image": full_image_url or "", # Сохраняем ПОЛНЫЙ URL
-            "last_message": "", # Пустые строки вместо None
-            "last_message_time": "",
-            "unread_count_user1": 0, 
-            "unread_count_user2": 0
-        }
-        logger.info(f"[create_chat] Data prepared for Redis: {chat_to_save}")
-
-        # --- Шаг 5: Транзакция Redis --- 
-        logger.info(f"[create_chat] Starting Redis transaction for chat {chat_id}")
-        pipe = redis_client.pipeline()
-        pipe.hset(chat_key, mapping=chat_to_save)
-        pipe.sadd(participants_key, str(owner_id), str(buyer_id))
-        pipe.sadd(f"user:{owner_id}:chats", chat_id)
-        pipe.sadd(f"user:{buyer_id}:chats", chat_id)
-        pipe.set(lookup_key, chat_id)
-        results = pipe.execute()
-        logger.info(f"[create_chat] Redis transaction finished. Results: {results}")
-
-        if not all(results):
-            logger.error(f"[create_chat] Redis pipeline failed! Results: {results}")
-            # Попытка очистки? Сложно. Лучше вернуть ошибку.
-            raise HTTPException(status_code=500, detail="Ошибка сохранения данных чата в Redis.")
-
-        # --- Шаг 6: Уведомление через WebSocket --- 
-        logger.info(f"[create_chat] Emitting 'new_chat' event for chat {chat_id}")
-        await sio.emit('new_chat', {'chat_id': chat_id, 'participants': [owner_id, buyer_id]})
-
-        # --- Шаг 7: Формирование и возврат ответа --- 
-        logger.info(f"[create_chat] Preparing final response for new chat {chat_id}")
-        # Возвращаем только поля, соответствующие упрощенной ChatResponse
-        response_obj = ChatResponse(
-            id=chat_id,
-            property_id=chat_data.property_id,
-            participants=[owner_id, buyer_id], # Используем вычисленные ID
-            created_at=now, # Используем объект datetime
-            updated_at=now, 
-            is_archived=False,
-            property_title=chat_to_save["property_title"],
-            property_image=chat_to_save["property_image"]
+        # Проверяем существование чата
+        logger.info("Checking for existing chat")
+        existing_chat = await postgres_service.get_existing_chat(
+            chat_data.property_id,
+            chat_data.participants
         )
-        logger.info(f"[create_chat] <<< Finished chat creation successfully for chat {chat_id}. Returning response. >>>")
-        return response_obj
+        if existing_chat:
+            logger.info(f"Found existing chat {existing_chat.id}")
+            # Если чат существует, возвращаем его
+            participants_details = []
+            for participant in existing_chat.participants:
+                user_details = await fetch_user_details(participant.user_id)
+                if user_details:
+                    participants_details.append(ParticipantDetail(
+                        user_id=participant.user_id,
+                        username=user_details.get("username", ""),
+                        full_name=user_details.get("full_name", ""),
+                        avatar_url=get_full_image_url(user_details.get("avatar_url")),
+                        last_read_at=participant.last_read_at
+                    ))
+            
+            return ChatResponse(
+                id=str(existing_chat.id),
+                property_id=existing_chat.property_id,
+                property_title=existing_chat.property_title,
+                property_image=get_full_image_url(existing_chat.property_image),
+                participants=participants_details,
+                created_at=existing_chat.created_at,
+                updated_at=existing_chat.updated_at,
+                is_archived=existing_chat.is_archived
+            )
 
-    except HTTPException as http_exc:
-        # Логируем и передаем дальше HTTP исключения, которые мы сами вызвали
-        logger.error(f"[create_chat] HTTP Exception occurred: {http_exc.status_code} - {http_exc.detail}")
-        raise http_exc
+        # Получаем детали объекта недвижимости
+        logger.info(f"Fetching property details for {chat_data.property_id}")
+        property_details = await fetch_property_details(chat_data.property_id)
+        if not property_details:
+            logger.error(f"Property {chat_data.property_id} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        logger.info(f"Property details: {property_details}")
+
+        # Создаем чат в PostgreSQL
+        logger.info("Creating new chat in PostgreSQL")
+        chat = await postgres_service.create_chat(
+            property_id=chat_data.property_id,
+            user_ids=chat_data.participants,
+            property_title=property_details.get("title"),
+            property_image=property_details.get("image")
+        )
+        logger.info(f"Created new chat {chat.id}")
+
+        # Сохраняем данные чата в Redis
+        chat_key = f"chat:{str(chat.id)}"
+        redis_client.hmset(chat_key, {
+            "property_id": str(chat.property_id),
+            "property_title": chat.property_title,
+            "property_image": chat.property_image,
+            "created_at": chat.created_at.isoformat(),
+            "updated_at": chat.updated_at.isoformat(),
+            "is_archived": str(chat.is_archived).lower(),
+            "unread_count_user1": "0",
+            "unread_count_user2": "0"
+        })
+
+        # Сохраняем участников в Redis
+        participants_key = f"chat:{str(chat.id)}:participants"
+        for participant_id in chat_data.participants:
+            redis_client.sadd(participants_key, str(participant_id))
+            
+        # Добавляем чат в списки чатов пользователей
+        for user_id in chat_data.participants:
+            user_chats_key = f"user:{user_id}:chats"
+            redis_client.sadd(user_chats_key, str(chat.id))
+
+        # Получаем детали участников
+        logger.info("Fetching participant details")
+        participants_details = []
+        for user_id in chat_data.participants:
+            user_details = await fetch_user_details(user_id)
+            if not user_details:
+                logger.error(f"User details not found for user {user_id}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User details not found for user {user_id}"
+                )
+            participants_details.append(ParticipantDetail(
+                user_id=user_id,
+                username=user_details.get("username", ""),
+                full_name=user_details.get("full_name", ""),
+                avatar_url=get_full_image_url(user_details.get("avatar_url")),
+                last_read_at=datetime.now(timezone.utc) if user_id == current_user_id else None
+            ))
+            logger.info(f"Added participant details for user {user_id}")
+
+        # Формируем ответ
+        logger.info("Forming response")
+        return ChatResponse(
+            id=str(chat.id),
+            property_id=chat.property_id,
+            property_title=property_details.get("title"),
+            property_image=property_details.get("image"),
+            participants=participants_details,
+            created_at=chat.created_at,
+            updated_at=chat.updated_at,
+            is_archived=chat.is_archived
+        )
     except Exception as e:
-        # Логируем любые другие непредвиденные ошибки
-        logger.exception(f"[create_chat] UNEXPECTED Error creating chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Непредвиденная ошибка сервера при создании чата: {str(e)}")
+        logger.exception(f"Error creating chat: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create chat: {str(e)}"
+        )
 
 @router.get("/{chat_id}/messages", response_model=ChatMessageListResponse)
 async def get_chat_messages(
@@ -628,212 +678,161 @@ async def get_chat_messages(
 async def create_message(
     chat_id: str,
     message: MessageCreate,
-    current_user_id: int = Depends(get_current_user_id)
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
 ):
-    """
-    Создает новое сообщение в чате.
-    """
-    logger.info(f"[create_message] <<< User {current_user_id} creating message in chat {chat_id} >>>")
-    
-    # 1. Проверка, является ли пользователь участником чата
-    participants_key = f"chat:{chat_id}:participants"
-    if not redis_client.sismember(participants_key, str(current_user_id)):
-        logger.warning(f"User {current_user_id} not member of chat {chat_id}")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Вы не являетесь участником этого чата")
-
-    # 2. Валидация сообщения (может быть добавлена позже)
-    if not message.content or message.content.isspace():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Сообщение не может быть пустым")
-
-    # 3. Вызов сервисной функции для сохранения и отправки
     try:
+        # Проверяем существование чата в PostgreSQL
+        chat = await postgres_service.get_chat_by_id(uuid.UUID(chat_id))
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found"
+            )
+
+        # Сохраняем сообщение в Redis и PostgreSQL
         message_response = await save_and_emit_message(
             sio=sio,
             chat_id=chat_id,
             sender_id=current_user_id,
-            content=message.content.strip(), # Передаем очищенный контент
-            message_type="text" # Этот эндпоинт только для текста
+            content=message.content,
+            message_type=message.message_type,
+            attachments=message.attachments,
+            temp_id=message.temp_id,
+            postgres_service=postgres_service
         )
-        logger.info(f"[create_message] Message {message_response.id} created and emitted successfully.")
+
         return message_response
     except Exception as e:
-        # Ошибки из save_and_emit_message будут пойманы здесь
-        logger.exception(f"[create_message] Failed to save or emit message for chat {chat_id}: {e}")
+        logger.exception(f"Error creating message: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Не удалось создать или отправить сообщение"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create message"
         )
 
 @router.put("/{chat_id}/messages/readall")
 async def mark_all_messages_as_read(
     chat_id: str,
-    current_user_id: int = Depends(get_current_user_id)
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
 ):
-    logger.info(f"User {current_user_id} marking all messages as read in chat {chat_id}")
     try:
-        # Проверяем существование чата и права доступа
-        chat_key = f"chat:{chat_id}"
-        participants_key = f"chat:{chat_id}:participants"
-        
-        if not redis_client.exists(chat_key):
-            logger.warning(f"Attempt to mark messages as read in non-existent chat {chat_id}")
-            raise HTTPException(status_code=404, detail="Чат не найден")
-            
-        participants_ids_str = redis_client.smembers(participants_key)
-        if not participants_ids_str:
-            logger.error(f"Participants set not found for existing chat {chat_id}")
-            raise HTTPException(status_code=500, detail="Ошибка данных чата: участники не найдены")
-             
-        participants = [int(p) for p in participants_ids_str]
-        if current_user_id not in participants:
-            logger.warning(f"User {current_user_id} tried to mark messages as read in chat {chat_id} they are not part of")
-            raise HTTPException(status_code=403, detail="Нет доступа к чату")
-            
-        # Получаем все сообщения чата
-        message_ids = redis_client.zrange(f"chat:{chat_id}:messages", 0, -1)
-        if not message_ids:
-            return {"status": "success", "message": "Нет сообщений для отметки"}
-        
-        updated_message_ids = [] # Список ID сообщений, статус которых обновлен
+        # Проверяем существование чата в PostgreSQL
+        chat = await postgres_service.get_chat_by_id(uuid.UUID(chat_id))
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found"
+            )
 
-        # Отмечаем все сообщения как прочитанные
-        with redis_client.pipeline() as pipe:
-            for message_id in message_ids:
-                message_key = f"message:{message_id}" 
-                
-                sender_id_str = redis_client.hget(message_key, 'sender_id')
-                is_read_str = redis_client.hget(message_key, 'is_read') # Получаем текущий статус
-                
-                if not sender_id_str:
-                    logger.warning(f"Could not get sender_id for message key {message_key} while marking as read.")
-                    continue
-                    
-                try:
-                    sender_id = int(sender_id_str)
-                    # Обновляем, если сообщение от ДРУГОГО пользователя И оно еще НЕ прочитано
-                    if sender_id != current_user_id and is_read_str == "False":
-                        pipe.hset(message_key, "is_read", "True") 
-                        updated_message_ids.append(message_id) # Добавляем ID в список обновленных
-                except ValueError:
-                     logger.error(f"Invalid sender_id '{sender_id_str}' for message key {message_key}.")
-                     continue
-                    
-            results = pipe.execute()
-            logger.info(f"Marked {len(updated_message_ids)} messages as read in chat {chat_id}. Pipeline results: {results}")
-            
-        # Сбрасываем счетчик непрочитанных для текущего пользователя
-        sorted_participants = sorted(participants)
-        user_index = 1 if current_user_id == sorted_participants[0] else 2
-        unread_key = f"unread_count_user{user_index}"
-        redis_client.hset(chat_key, unread_key, 0)
-        logger.info(f"Unread count for user {current_user_id} (index {user_index}) reset.")
+        # Отмечаем сообщения как прочитанные в PostgreSQL
+        await postgres_service.mark_messages_as_read(uuid.UUID(chat_id), current_user_id)
         
-        # --- ДОБАВЛЕНО: Отправка события Socket.IO отправителю --- 
-        if updated_message_ids:
-            # Определяем ID отправителя (того, кто НЕ является текущим пользователем)
-            other_user_id = next((p for p in participants if p != current_user_id), None)
-            if other_user_id:
-                try:
-                    # Готовим данные для события
-                    event_data = {
-                        "chat_id": chat_id,
-                        "reader_id": current_user_id, # Кто прочитал
-                        "message_ids": updated_message_ids # Какие сообщения прочитаны
-                    }
-                    # Отправляем событие в комнату = ID другого пользователя
-                    await sio.emit('messages_read', event_data, room=str(other_user_id))
-                    logger.info(f"Emitted 'messages_read' event to user {other_user_id} for chat {chat_id}")
-                except Exception as e:
-                    logger.exception(f"Failed to emit 'messages_read' event: {e}")
-            else:
-                 logger.error(f"Could not determine other user ID to send 'messages_read' event for chat {chat_id}")
-        # --- КОНЕЦ ДОБАВЛЕНИЯ --- 
+        # Обновляем время последнего прочтения для участника
+        await postgres_service.update_chat_participant_last_read(
+            uuid.UUID(chat_id),
+            current_user_id,
+            datetime.now(timezone.utc)
+        )
 
-        return {"status": "success", "message": "Все сообщения отмечены как прочитанные"}
-        
-    except HTTPException as http_exc:
-        raise http_exc
+        return {"status": "success"}
     except Exception as e:
-        logger.exception(f"Error marking messages as read for user {current_user_id} in chat {chat_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при отметке сообщений как прочитанных: {str(e)}")
+        logger.exception(f"Error marking messages as read: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to mark messages as read"
+        )
 
 @router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_chat(
     chat_id: str,
-    current_user_id: int = Depends(get_current_user_id)
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
 ):
+    """
+    Мягкое удаление чата для текущего пользователя.
+    Если все участники удалили чат - полное удаление.
+    """
     logger.info(f"Attempting to delete chat {chat_id} by user {current_user_id}")
     try:
+        # Проверяем существование чата в Redis
         chat_key = f"chat:{chat_id}"
         participants_key = f"chat:{chat_id}:participants"
-        messages_set_key = f"chat:{chat_id}:messages"
         
-        # 1. Проверяем существование чата
-        chat_exists = redis_client.exists(chat_key)
-        if not chat_exists:
-            logger.warning(f"Chat {chat_id} not found for deletion attempt by user {current_user_id}")
+        if not redis_client.exists(chat_key):
+            logger.warning(f"Chat {chat_id} not found in Redis")
             return Response(status_code=status.HTTP_204_NO_CONTENT)
             
-        # 2. Получаем участников и проверяем права
+        # Получаем участников из Redis
         participants_ids_str = redis_client.smembers(participants_key)
         participants = [int(p) for p in participants_ids_str]
         
         if current_user_id not in participants:
-            logger.warning(f"User {current_user_id} tried to delete chat {chat_id} without permission. Participants: {participants}")
+            logger.warning(f"User {current_user_id} tried to delete chat {chat_id} without permission")
             raise HTTPException(status_code=403, detail="У вас нет прав для удаления этого чата")
-            
-        # 3. Собираем ключи для удаления
-        # Ключи метаданных чата
-        chat_key = f"chat:{chat_id}"
-        participants_key = f"chat:{chat_id}:participants"
-        messages_set_key = f"chat:{chat_id}:messages"
-        # Ключ для обратного поиска (если используется)
-        chat_data = redis_client.hgetall(chat_key)
-        owner_id = chat_data.get("owner_id")
-        buyer_id = chat_data.get("buyer_id")
-        property_id = chat_data.get("property_id")
-        lookup_key = None
-        if owner_id and buyer_id and property_id:
-             try:
-                 user1_id, user2_id = sorted([int(owner_id), int(buyer_id)])
-                 lookup_key = f"lookup_chat:{property_id}:{user1_id}:{user2_id}"
-             except ValueError:
-                  logger.warning(f"Could not form lookup key for chat {chat_id} due to invalid IDs.")
-        
-        keys_to_delete = [chat_key, participants_key, messages_set_key]
-        if lookup_key:
-             keys_to_delete.append(lookup_key)
-        
-        # Добавляем ключи сообщений
-        message_ids = redis_client.zrange(messages_set_key, 0, -1)
-        for message_id in message_ids:
-            keys_to_delete.append(f"message:{message_id}") 
-            
-        # Удаляем ссылки на чат у пользователей
-        if owner_id: keys_to_delete.append(f"user:{owner_id}:chats") # Удаляем ключ целиком, это может быть неверно если у юзера много чатов
-        if buyer_id: keys_to_delete.append(f"user:{buyer_id}:chats") # Правильнее использовать SREM
-        
-        # 4. Удаляем все ключи транзакцией
-        if keys_to_delete:
-            pipe = redis_client.pipeline()
-            # Используем SREM для удаления chat_id из списков пользователей
-            if owner_id: pipe.srem(f"user:{owner_id}:chats", chat_id)
-            if buyer_id: pipe.srem(f"user:{buyer_id}:chats", chat_id)
-            # Удаляем остальные ключи
-            keys_to_delete_final = [k for k in keys_to_delete if not k.startswith("user:")]
-            if keys_to_delete_final:
-                 pipe.delete(*keys_to_delete_final) # Используем * для передачи нескольких ключей в delete
-                 
-            results = pipe.execute()
-            logger.info(f"Deleted chat {chat_id} and related keys/references. Results: {results}")
-        else:
-            logger.info(f"No keys found to delete for chat {chat_id}")
 
-        # 5. Отправляем событие об удалении чата через WebSocket (опционально)
-        # Убедитесь, что у вас есть ID получателя, если хотите уведомить его
+        # Удаляем чат в PostgreSQL
+        try:
+            chat_uuid = uuid.UUID(chat_id)
+            deleted = await postgres_service.delete_chat(chat_uuid, current_user_id)
+            if not deleted:
+                logger.error(f"Failed to delete chat {chat_id} in PostgreSQL")
+                raise HTTPException(status_code=500, detail="Ошибка при удалении чата")
+        except ValueError:
+            logger.error(f"Invalid chat_id format: {chat_id}")
+            raise HTTPException(status_code=400, detail="Неверный формат ID чата")
+
+        # Обновляем статус в Redis
+        try:
+            # Обновляем статус удаления для пользователя
+            user_status_key = f"chat:{chat_id}:user:{current_user_id}:status"
+            redis_client.hmset(user_status_key, {
+                "is_deleted": "true",
+                "is_visible": "false",
+                "deleted_at": datetime.utcnow().isoformat()
+            })
+
+            # Проверяем, все ли участники удалили чат
+            all_deleted = True
+            for participant_id in participants:
+                participant_status_key = f"chat:{chat_id}:user:{participant_id}:status"
+                participant_status = redis_client.hgetall(participant_status_key)
+                if not participant_status or participant_status.get("is_deleted") != "true":
+                    all_deleted = False
+                    break
+
+            if all_deleted:
+                # Если все удалили - удаляем все данные чата из Redis
+                message_ids = redis_client.zrange(f"chat:{chat_id}:messages", 0, -1)
+                keys_to_delete = [
+                    chat_key,
+                    participants_key,
+                    f"chat:{chat_id}:messages"
+                ]
+                # Добавляем ключи сообщений
+                for message_id in message_ids:
+                    keys_to_delete.append(f"message:{message_id}")
+                # Добавляем ключи статусов пользователей
+                for participant_id in participants:
+                    keys_to_delete.append(f"chat:{chat_id}:user:{participant_id}:status")
+                
+                redis_client.delete(*keys_to_delete)
+                logger.info(f"All chat data deleted from Redis for chat {chat_id}")
+            else:
+                logger.info(f"Chat {chat_id} marked as deleted for user {current_user_id} in Redis")
+
+        except Exception as redis_error:
+            logger.error(f"Redis error while deleting chat {chat_id}: {redis_error}")
+            # Не прерываем выполнение, так как основная операция в PostgreSQL уже выполнена
+
+        # Отправляем событие об удалении чата через WebSocket
         recipient_id = next((p for p in participants if p != current_user_id), None)
         if recipient_id:
-            await sio.emit('chat_deleted', {'chat_id': chat_id}, room=str(recipient_id))
+            await sio.emit('chat_deleted', {
+                'chat_id': chat_id,
+                'deleted_by': current_user_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }, room=str(recipient_id))
             logger.info(f"Emitted chat_deleted event for chat {chat_id} to user {recipient_id}")
             
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -847,63 +846,59 @@ async def delete_chat(
 @router.get("/{chat_id}/participants", response_model=List[ParticipantDetail])
 async def get_chat_participants(
     chat_id: str,
-    current_user_id: int = Depends(get_current_user_id)
+    current_user_id: int = Depends(get_current_user_id),
+    postgres_service: PostgresChatService = Depends(get_postgres_chat_service)
 ):
     logger.info(f"User {current_user_id} getting participants for chat {chat_id}")
     try:
-        chat_key = f"chat:{chat_id}"
-        participants_key = f"chat:{chat_id}:participants"
+        # Преобразуем строковый ID в UUID
+        chat_uuid = uuid.UUID(chat_id)
         
-        # Проверяем существование чата
-        if not redis_client.exists(chat_key):
-            logger.warning(f"Chat {chat_id} not found when getting participants.")
-            raise HTTPException(status_code=404, detail="Чат не найден")
-            
-        # Получаем участников и проверяем права доступа
-        participants_ids_str = redis_client.smembers(participants_key)
-        if not participants_ids_str:
-            logger.error(f"Participants set not found for existing chat {chat_id}")
-            raise HTTPException(status_code=500, detail="Ошибка данных чата: участники не найдены")
-            
-        participants = {int(p) for p in participants_ids_str}
-        if current_user_id not in participants:
+        # Получаем участников из PostgreSQL
+        participants = await postgres_service.get_chat_participants(chat_uuid)
+        if not participants:
+            logger.error(f"No participants found in PostgreSQL for chat {chat_id}")
+            raise HTTPException(status_code=404, detail="Участники чата не найдены")
+
+        # Проверяем права доступа
+        if not any(str(p["id"]) == str(current_user_id) for p in participants):
             logger.warning(f"User {current_user_id} tried to get participants from chat {chat_id} without permission.")
             raise HTTPException(status_code=403, detail="Нет доступа к чату")
-            
-        # Получаем информацию о чате
-        chat_data = redis_client.hgetall(chat_key)
-        
+
         # Получаем детали участников
         participants_details = []
-        for participant_id in participants:
-            if participant_id == current_user_id:
-                # Для текущего пользователя используем данные из контекста
-                participants_details.append({
-                    "id": current_user_id,
-                    "name": "Вы",
-                    "email": "",
-                    "avatar": "",
-                    "lastSeen": datetime.now().isoformat(),
-                    "isOnline": True
-                })
-            else:
-                # Для других участников получаем данные из Redis или API
-                user_details = await fetch_user_details(participant_id)
-                participants_details.append({
-                    "id": participant_id,
-                    "name": user_details.get("full_name", "Собеседник"),
-                    "email": user_details.get("email", ""),
-                    "avatar": user_details.get("avatar", ""),
-                    "lastSeen": datetime.now().isoformat(), # TODO: Реализовать получение реального времени последней активности
-                    "isOnline": True # TODO: Реализовать проверку онлайн-статуса
-                })
-        
+        for participant in participants:
+            user_id = int(participant["id"])
+            
+            try:
+                # Получаем детали пользователя
+                user_details = await fetch_user_details(user_id)
+                if not user_details:
+                    logger.warning(f"Could not fetch details for user {user_id} in chat {chat_id}")
+                    user_details = {
+                        "username": "",
+                        "full_name": "Пользователь",
+                        "avatar_url": None
+                    }
+
+                participants_details.append(ParticipantDetail(
+                    user_id=user_id,
+                    username=user_details.get("username", ""),
+                    full_name=user_details.get("full_name", ""),
+                    avatar_url=get_full_image_url(user_details.get("avatar_url")),
+                    last_read_at=datetime.fromisoformat(participant["last_read_at"]) if participant.get("last_read_at") else None,
+                    joined_at=datetime.fromisoformat(participant["joined_at"]) if participant.get("joined_at") else None
+                ))
+            except Exception as user_details_error:
+                logger.error(f"Error processing participant {user_id}: {user_details_error}")
+                continue
+
         return participants_details
-        
-    except HTTPException as http_exc:
-        raise http_exc
     except Exception as e:
-        logger.exception(f"Error getting participants for chat {chat_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении участников: {str(e)}")
+        logger.exception(f"Error getting chat participants: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get chat participants"
+        )
 
 # Убедитесь, что роутер подключен в main.py или app/__init__.py

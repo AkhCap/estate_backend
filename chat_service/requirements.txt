@@ -8,4 +8,8 @@ python-dotenv==1.0.1
 pydantic-settings==2.2.1
 httpx
 python-multipart
-passlib[bcrypt] 
+passlib[bcrypt]
+sqlalchemy>=2.0.39
+alembic>=1.13.1
+psycopg2-binary>=2.9.10
+asyncpg>=0.29.0 

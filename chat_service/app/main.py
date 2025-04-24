@@ -5,6 +5,8 @@ import logging
 from app.core.config import settings
 from app.routes import chat, uploads
 from app import sio  # Импортируем sio из модуля __init__
+from app.db.base import Base
+from app.db.session import engine
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -23,16 +25,20 @@ app = FastAPI(
 
 # Настройка CORS
 origins = [
-    "http://localhost:3000", # React frontend
+    "http://localhost:3000",  # React frontend
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
     # Добавьте другие origins при необходимости
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,       # Разрешенные источники
-    allow_credentials=True,    # Разрешить cookies
-    allow_methods=["*"],         # Разрешить все методы (GET, POST, etc.)
+    allow_credentials=True,      # Разрешить cookies
+    allow_methods=["*"],         # Разрешить все методы
     allow_headers=["*"],         # Разрешить все заголовки
+    expose_headers=["*"]         # Разрешить все заголовки в ответе
 )
 
 # Подключение роутеров API
@@ -55,6 +61,13 @@ asgi_app = socketio.ASGIApp(
     app,
     socketio_path="socket.io"  # Путь должен соответствовать настройкам в клиенте
 )
+
+# Инициализация базы данных при запуске
+@app.on_event("startup")
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables created")
 
 # Для запуска через Uvicorn
 if __name__ == "__main__":

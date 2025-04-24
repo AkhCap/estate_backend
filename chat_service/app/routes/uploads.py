@@ -198,44 +198,48 @@ async def upload_chat_files_with_caption(
             "created_at": timestamp_iso,
             "message_type": "files" # Set new type
         }
+
+        # Сохраняем сообщение в Redis
         message_key = f"message:{message_id}"
+        for key, value in message_data.items():
+            redis_client.hset(message_key, key, value)
 
-        pipeline = redis_client.pipeline()
-        pipeline.hmset(message_key, message_data)
-        pipeline.zadd(f"chat:{chat_id}:messages", {message_id: timestamp.timestamp()})
+        # Добавляем сообщение в список сообщений чата
+        redis_client.zadd(f"chat:{chat_id}:messages", {message_id: timestamp.timestamp()})
+
+        # Обновляем метаданные чата
         chat_meta_key = f"chat:{chat_id}"
-        pipeline.hset(chat_meta_key, "last_message", last_message_preview)
-        pipeline.hset(chat_meta_key, "last_message_time", timestamp_iso)
-        pipeline.hset(chat_meta_key, "updated_at", timestamp_iso)
-        # Update unread count logic
-        participants_key = f"chat:{chat_id}:participants"
-        participants_ids_str = redis_client.smembers(participants_key)
-        participants_ids = {int(p) for p in participants_ids_str if p.isdigit()}
-        sorted_participants = sorted(list(participants_ids))
-        if len(sorted_participants) == 2:
-             user1_id = sorted_participants[0]
-             user2_id = sorted_participants[1]
-             if current_user_id == user1_id:
-                 pipeline.hincrby(chat_meta_key, "unread_count_user2", 1)
-             elif current_user_id == user2_id:
-                 pipeline.hincrby(chat_meta_key, "unread_count_user1", 1)
+        redis_client.hset(chat_meta_key, "last_message", last_message_preview)
+        redis_client.hset(chat_meta_key, "last_message_time", timestamp_iso)
+        redis_client.hset(chat_meta_key, "sender_id_of_last_message", str(current_user_id))
+        redis_client.hset(chat_meta_key, "updated_at", timestamp_iso)
 
-        pipeline.execute()
-        logger.info(f"Message for files {message_id} saved to Redis for chat {chat_id}")
+        # Сохраняем сообщение в PostgreSQL через save_and_emit_message
+        from app.services.chat_service import save_and_emit_message
+        from app.services.postgres_service import PostgresChatService
+        from app.db.session import async_session
 
-        # --- Emit via WebSocket --- 
-        message_response = MessageResponse(
-            id=message_id,
-            chat_id=chat_id,
-            sender_id=current_user_id,
-            content=message_content_json,
-            created_at=timestamp,
-            message_type="files",
-            is_read=False 
+        async with async_session() as session:
+            postgres_service = PostgresChatService(session)
+            await save_and_emit_message(
+                sio=sio,
+                chat_id=chat_id,
+                sender_id=current_user_id,
+                content=message_content_json,
+                message_type="files",
+                attachments=processed_files_metadata,
+                postgres_service=postgres_service
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "message": "Files uploaded successfully",
+                "message_id": message_id,
+                "files": processed_files_metadata,
+                "caption": caption
+            }
         )
-        emit_data_json = message_response.model_dump_json()
-        await sio.emit('new_message', emit_data_json, room=chat_id)
-        logger.info(f"[SocketIO Emit] Event 'new_message' (type files) SUCCESS sent to room {chat_id}")
 
     except Exception as e:
         logger.exception(f"Error creating/sending message for files in chat {chat_id}: {e}")
@@ -248,19 +252,6 @@ async def upload_chat_files_with_caption(
                 "message_error": str(e)
             }
         )
-
-    # --- Success Response --- 
-    final_status_code = status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS
-
-    return JSONResponse(
-        status_code=final_status_code,
-        content={
-            "detail": f"Successfully processed {len(processed_files_metadata)} out of {len(files)} files." if final_status_code == 207 else "All files uploaded successfully and message created.",
-            "message_id": message_id,
-            "uploaded_files": [f.get("filename") for f in processed_files_metadata],
-            "processing_errors": errors
-        }
-    )
 
 # --- Эндпоинт для отдачи статических файлов чата ---
 # Нужен, чтобы клиенты могли скачивать загруженные файлы по URL
