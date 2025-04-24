@@ -82,3 +82,6 @@ chat_service/*.pyc
 *.pack.gz
 *.so
 *.node
+
+# Ignore zip files in uploads directory
+backend/app/uploads/**/*.zip
