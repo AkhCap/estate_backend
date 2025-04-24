@@ -5,10 +5,11 @@ import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 interface ImageCarouselProps {
   images: string[];
   altPrefix?: string; // Необязательный проп для формирования alt-текста
+  initialImageIndex?: number; // Начальный индекс изображения
 }
 
-export default function ImageCarousel({ images, altPrefix = "Фото" }: ImageCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export default function ImageCarousel({ images, altPrefix = "Фото", initialImageIndex = 0 }: ImageCarouselProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialImageIndex);
   const [showLightbox, setShowLightbox] = useState(false);
 
   // Если массив пустой — показываем заглушку

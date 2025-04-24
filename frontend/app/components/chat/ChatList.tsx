@@ -9,17 +9,29 @@ import {
   FaEllipsisV
 } from "react-icons/fa";
 import { MessagesSquare } from "lucide-react";
+import { useAuth } from '../../hooks/useAuth';
+import { Menu, Transition } from "@headlessui/react";
+import { Fragment } from "react";
+import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
+import { PropertyInfo } from "@/types";
 
 interface Chat {
   id: string;
   property_id: number;
-  participants: number[];
+  participants: Array<{
+    user_id: number;
+    username: string;
+    full_name: string;
+    avatar_url?: string | null;
+    last_read_at?: string | null;
+    is_online?: boolean;
+  }>;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
   property_title?: string | null;
   property_image?: string | null;
-  participant_name?: string | null;
+  property?: PropertyInfo;
   last_message?: string | null;
   last_message_time?: string | null;
   unread_count?: number | null;
@@ -44,6 +56,26 @@ const getPropertyImageUrl = (imageUrl: string | null | undefined): string => {
   return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${imageUrl}`;
 };
 
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: PropertyInfo): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/no-image.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${imageUrl}`;
+};
+
 const ChatList: React.FC<ChatListProps> = ({ 
   chats, 
   isLoading, 
@@ -55,11 +87,18 @@ const ChatList: React.FC<ChatListProps> = ({
 }) => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
-  const filteredChats = chats.filter((chat) =>
-    (chat.property_title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-    (chat.participant_name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-  );
+  const getParticipantName = (chat: Chat) => {
+    const otherParticipant = chat.participants.find(p => p.user_id.toString() !== user?.id?.toString());
+    return otherParticipant?.full_name || '';
+  };
+
+  const filteredChats = chats.filter(chat => {
+    const searchLower = searchQuery.toLowerCase();
+    const participantName = getParticipantName(chat);
+    return participantName.toLowerCase().includes(searchLower);
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -147,15 +186,18 @@ const ChatList: React.FC<ChatListProps> = ({
               }
             }}
           >
-            <div className="relative w-12 h-12 flex-shrink-0">
-              <Image
-                src={getPropertyImageUrl(chat.property_image)}
-                alt={chat.property_title || "Объект"}
-                fill
-                sizes="48px"
-                className="rounded-lg object-cover border border-gray-200"
-                onError={(e) => { e.currentTarget.src = '/no-image.jpg'; }}
-              />
+            <div className="flex items-center gap-4">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                <img
+                  src={chat.property ? getMainImageUrl(chat.property) : getPropertyImageUrl(chat.property_image)}
+                  alt={chat.property_title || "Объявление без названия"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/no-image.jpg";
+                  }}
+                />
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <h3 className={`text-sm font-semibold text-gray-800 line-clamp-1 mb-0.5 ${isActive ? 'text-indigo-800' : 'text-gray-800'}`}>
@@ -164,7 +206,9 @@ const ChatList: React.FC<ChatListProps> = ({
               <div className={`text-xs ${ 
                   hasUnread ? 'text-gray-700 font-medium' : 'text-gray-500' 
               }`}>
-                 <span className="text-gray-600 font-semibold mr-1">{chat.participant_name || "Собеседник"}:</span> 
+                 <span className="text-gray-600 font-semibold mr-1">
+                   {getParticipantName(chat)}:
+                 </span> 
                  <span className={`line-clamp-1 ${!hasUnread && 'text-gray-500'}`}> 
                      {chat.last_message || <span className="italic">Нет сообщений</span>}
                  </span>

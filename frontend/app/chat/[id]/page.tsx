@@ -26,14 +26,19 @@ const CHAT_SERVICE_BASE_URL = process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || "http:
 interface Chat {
   id: string;
   property_id: number;
-  // Добавляем поля, которые реально приходят от /chats/me
-  participants: number[];
+  participants: Array<{
+    user_id: number;
+    username: string;
+    full_name: string;
+    avatar_url?: string | null;
+    last_read_at?: string | null;
+    is_online?: boolean;
+  }>;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
   property_title?: string | null;
-  property_image?: string | null; // Ожидаем ПОЛНЫЙ URL от chat_service
-  seller_name?: string | null;
+  property_image?: string | null;
   last_message?: string | null;
   last_message_time?: string | null;
   unread_count?: number | null;
@@ -70,7 +75,7 @@ interface PageProps {
 
 interface ParticipantDetail {
   id: number;
-  name: string;
+  full_name: string;
   email: string;
   avatar?: string;
   lastSeen?: string;
@@ -170,8 +175,27 @@ const ChatPage = ({ params }: PageProps) => {
            console.error('[ChatPage] Неверный формат данных чатов:', chatListResponse.data);
            throw new Error("Неверный формат данных чатов");
         }
-        fetchedChats = chatListResponse.data.chats;
-        console.log('[ChatPage] Получены чаты:', fetchedChats);
+        
+        // Получаем информацию о свойствах для каждого чата
+        const chatsWithProperties = await Promise.all(
+          chatListResponse.data.chats.map(async (chat: Chat) => {
+            try {
+              const propertyResponse = await axios.get(
+                `${MAIN_BACKEND_BASE_URL}/properties/${chat.property_id}`
+              );
+              return {
+                ...chat,
+                property: propertyResponse.data
+              };
+            } catch (error) {
+              console.error(`Ошибка при загрузке информации о недвижимости для чата ${chat.id}:`, error);
+              return chat;
+            }
+          })
+        );
+        
+        fetchedChats = chatsWithProperties;
+        console.log('[ChatPage] Получены чаты с информацией о недвижимости:', fetchedChats);
         setChats(fetchedChats);
         console.log('[ChatPage] Чаты установлены в состояние.');
       } catch (error: any) {
@@ -231,39 +255,26 @@ const ChatPage = ({ params }: PageProps) => {
   }, [params.id, user]);
 
   useEffect(() => {
-    const fetchParticipantDetails = async (participantIds: number[]) => {
-      // Не делаем запрос, если нет активного чата или это страница создания нового чата
-      if (!currentChat || params.id === 'new') {
-        setIsLoadingParticipants(false); // Устанавливаем false, т.к. запрос не нужен
-        setParticipantDetails({});
-        return;
-      }
+    // Не делаем запрос, если нет активного чата или это страница создания нового чата
+    if (!currentChat || params.id === 'new') {
+      setIsLoadingParticipants(false);
+      setParticipantDetails({});
+      return;
+    }
 
-      // Устанавливаем флаг загрузки перед запросом
-      setIsLoadingParticipants(true);
-      try {
-        const response = await chatAxiosInstance.get(`/chats/${params.id}/participants`);
-        if (response.data) {
-          const details = response.data.reduce((acc: Record<number, any>, participant: any) => {
-            acc[participant.id] = participant;
-            return acc;
-          }, {});
-          setParticipantDetails(details);
-        }
-      } catch (error) {
-        console.error('Ошибка при загрузке информации об участниках:', error);
-        setParticipantDetails({}); // Очищаем детали при ошибке
-        // Можно также установить сообщение об ошибке, если нужно
-        // setPageError("Не удалось загрузить данные участников."); 
-      } finally {
-        // !!! ГАРАНТИРОВАННО сбрасываем флаг загрузки !!!
-        setIsLoadingParticipants(false); 
-      }
-    };
-
-    // Передаем participantIds из currentChat, если он есть
-    fetchParticipantDetails(currentChat?.participants || []);
-  }, [currentChat, params.id]); // Зависимости: currentChat и params.id
+    // Используем данные участников из currentChat
+    const details = currentChat.participants.reduce((acc: Record<number, any>, participant: any) => {
+      acc[participant.user_id] = {
+        id: participant.user_id,
+        full_name: participant.full_name,
+        avatar_url: participant.avatar_url,
+        isOnline: participant.is_online
+      };
+      return acc;
+    }, {});
+    setParticipantDetails(details);
+    setIsLoadingParticipants(false);
+  }, [currentChat, params.id]);
 
   // --- ОБНОВЛЕННАЯ функция для отправки НЕСКОЛЬКИХ файлов ОДНИМ запросом --- 
   const handleSendFilesAndMessage = async (files: File[], message: string) => {

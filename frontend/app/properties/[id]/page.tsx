@@ -22,6 +22,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 interface Image {
   id: number;
   image_url: string;
+  is_main?: boolean;
 }
 
 interface PriceHistory {
@@ -236,6 +237,25 @@ const windowViewLabels: { [key: string]: string } = {
   "На парк": "На парк",
   "На улицу": "На улицу",
   "На горы": "На горы"
+};
+
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: Property): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/no-image.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  return `${BASE_URL}/uploads/properties/${imageUrl}`;
 };
 
 const PropertyDetailPage: React.FC = () => {
@@ -540,7 +560,22 @@ const PropertyDetailPage: React.FC = () => {
               {/* Карусель изображений */}
               <div className="relative w-full h-[500px] bg-gray-100 rounded-xl overflow-hidden mb-6">
                 <ImageCarousel
-                  images={property?.images?.map(img => `${BASE_URL}/uploads/properties/${img.image_url}`)}
+                  images={property?.images
+                    ?.slice()
+                    .sort((a, b) => {
+                      // Сортируем так, чтобы главное изображение было первым
+                      if (a.is_main && !b.is_main) return -1;
+                      if (!a.is_main && b.is_main) return 1;
+                      return 0;
+                    })
+                    .map(img => {
+                      const imageUrl = img.image_url;
+                      if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+                        return imageUrl;
+                      }
+                      return `${BASE_URL}/uploads/properties/${imageUrl}`;
+                    })}
+                  initialImageIndex={0}
                 />
               </div>
 

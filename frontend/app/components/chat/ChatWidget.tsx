@@ -52,6 +52,7 @@ interface ParticipantDetails {
     avatar_url?: string | null;
     name?: string; 
     isOnline?: boolean;
+    full_name?: string;
 }
 
 interface ChatProps {
@@ -93,6 +94,25 @@ const getFullImageUrl = (filename?: string | null): string => {
   return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${filename}`;
 };
 
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: PropertyInfo): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/no-image.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  return `${MAIN_BACKEND_BASE_URL}/uploads/properties/${imageUrl}`;
+};
+
 interface ChatHeaderProps {
   property: PropertyInfo;
   userId: number;
@@ -101,9 +121,7 @@ interface ChatHeaderProps {
 const ChatHeader = memo(({ property, userId }: ChatHeaderProps) => {
   console.log("[ChatHeader] Rendering. Property:", property);
 
-  const propertyImageUrl = property.images?.[0]?.image_url
-    ? getFullImageUrl(property.images[0].image_url)
-    : null;
+  const propertyImageUrl = property.images ? getMainImageUrl(property) : null;
 
   return (
     <div className="bg-white border-b border-gray-200 p-3">
@@ -111,24 +129,18 @@ const ChatHeader = memo(({ property, userId }: ChatHeaderProps) => {
         href={`/properties/${property.id}`}
         className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-1.5 transition-colors"
       >
-        <div className="relative w-10 h-10 flex-shrink-0">
-          {propertyImageUrl ? (
-            <Image
-              src={propertyImageUrl}
-              alt={property.title || "Объект недвижимости"}
-              fill
-              className="rounded-lg object-cover"
-              onError={(e) => { 
-                console.error("Error loading image:", e);
+        <div className="flex items-center gap-4">
+          <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+            <img
+              src={getMainImageUrl(property)}
+              alt={property.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/images/placeholder.png';
+                target.src = "/no-image.jpg";
               }}
             />
-          ) : (
-            <div className="w-full h-full rounded-lg bg-gray-200 flex items-center justify-center">
-              <FaHome className="w-5 h-5 text-gray-400" />
-            </div>
-          )}
+          </div>
         </div>
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-gray-900 truncate">
@@ -745,19 +757,17 @@ const ChatWidget: React.FC<ChatProps> = ({ chatId, userId, property, participant
               {group.messages.map((message, messageIndex) => {
                 const isCurrentUser = message.sender_id === userId;
                 const participant = participantDetails[message.sender_id];
+                const participantName = participant?.full_name || 'Пользователь';
+                const initial = participantName.charAt(0).toUpperCase();
 
                 let avatarUrl: string | undefined = undefined;
                 if (participant && participant.avatar_url) {
                   if (participant.avatar_url.startsWith('http') || participant.avatar_url.startsWith('/')) {
                     avatarUrl = participant.avatar_url;
                   } else {
-                    const MAIN_BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
                     avatarUrl = `${MAIN_BACKEND_BASE_URL}/uploads/avatars/${participant.avatar_url}`;
                   }
                 }
-                
-                const participantName = participant?.name || 'Пользователь';
-                const initial = participantName.charAt(0).toUpperCase();
 
                 return (
                   <motion.div

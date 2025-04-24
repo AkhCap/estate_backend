@@ -7,7 +7,7 @@ interface UserInfoPanelProps {
   participantDetails: {
     [key: number]: {
       avatar_url?: string | null;
-      name?: string;
+      full_name?: string;
       isOnline?: boolean;
       phone?: string;
       email?: string;
@@ -40,7 +40,7 @@ const UserInfoPanel: React.FC<UserInfoPanelProps> = ({ participantDetails, userI
           {avatarUrl ? (
             <Image
               src={avatarUrl}
-              alt={userInfo.name || "Пользователь"}
+              alt={userInfo.full_name || ""}
               fill
               className="rounded-full object-cover"
               onError={(e) => {
@@ -62,7 +62,7 @@ const UserInfoPanel: React.FC<UserInfoPanelProps> = ({ participantDetails, userI
             userInfo.isOnline ? 'bg-green-500' : 'bg-gray-400'
           }`} />
         </div>
-        <h3 className="text-lg font-semibold text-gray-800">{userInfo.name || "Пользователь"}</h3>
+        <h3 className="text-lg font-semibold text-gray-800">{userInfo.full_name}</h3>
         <p className="text-sm text-gray-500">{userInfo.isOnline ? "В сети" : "Не в сети"}</p>
       </div>
 

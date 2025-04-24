@@ -15,6 +15,7 @@ const BASE_URL = "http://localhost:8000";
 interface Image {
   id: number;
   image_url: string;
+  is_main: boolean;
 }
 
 interface Property {
@@ -84,6 +85,25 @@ const formatDate = (dateString: string) => {
   } catch (error) {
     return 'Дата не указана';
   }
+};
+
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: Property): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/no-image.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  return `${BASE_URL}/uploads/properties/${imageUrl}`;
 };
 
 export default function PropertiesPage() {
@@ -265,7 +285,7 @@ export default function PropertiesPage() {
                   {/* Изображение */}
                   <div className="relative h-[200px]">
                     <img
-                      src={property.images[0] ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}` : "/no-image.jpg"}
+                      src={getMainImageUrl(property)}
                       alt={property.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
