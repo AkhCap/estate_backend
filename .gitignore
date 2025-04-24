@@ -56,3 +56,29 @@ yarn-error.log*
 *.pem
 dump.rdb
 frontend/public/default-avatar.jpg
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Virtual Environment
+venv/
+env/
+
+# Uploads
+app/uploads/properties/virtual_tours/**/*.zip
+app/uploads/properties/virtual_tours/**/metafile.json
+app/uploads/properties/virtual_tours/**/*/
+
+# Frontend
+frontend/.cache/
+
+# Chat Service
+chat_service/__pycache__/
+chat_service/*.pyc
+
+# Large files
+*.pack
+*.pack.gz
+*.so
+*.node
