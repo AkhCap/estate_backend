@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Virtual Environment
+venv/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Uploads
+app/uploads/properties/virtual_tours/**/*.zip
+app/uploads/properties/virtual_tours/**/metafile.json
+app/uploads/properties/virtual_tours/**/*/
