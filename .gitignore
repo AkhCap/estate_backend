@@ -85,3 +85,17 @@ chat_service/*.pyc
 
 # Ignore zip files in uploads directory
 backend/app/uploads/**/*.zip
+
+# System files
+**/.DS_Store
+
+# Build directories
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Dependencies
+**/node_modules/
+**/venv/
+**/__pycache__/
+**/*.pyc
