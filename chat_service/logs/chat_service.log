@@ -1,0 +1,525 @@
+2025-04-23 22:31:00,187 - engineio.server - INFO - Server initialized for asgi.
+2025-04-23 22:31:00,194 - app.main - INFO - Chat service initialized with routes:
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /api/v1/openapi.json [{'GET', 'HEAD'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /docs [{'GET', 'HEAD'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /docs/oauth2-redirect [{'GET', 'HEAD'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /redoc [{'GET', 'HEAD'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/me [{'GET'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{user_id} [{'GET'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats [{'POST'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'GET'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'POST'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages/readall [{'PUT'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{chat_id} [{'DELETE'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/chats/{chat_id}/participants [{'GET'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/uploads/{chat_id} [{'POST'}]
+2025-04-23 22:31:00,195 - app.main - INFO - Route: /chat-api/uploads/files/{chat_id}/{filename} [{'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Chat service initialized with routes:
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /api/v1/openapi.json [{'HEAD', 'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /docs [{'HEAD', 'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /docs/oauth2-redirect [{'HEAD', 'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /redoc [{'HEAD', 'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /chat-api/chats/me [{'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /chat-api/chats/{user_id} [{'GET'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /chat-api/chats [{'POST'}]
+2025-04-24 02:09:57,986 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'GET'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'POST'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages/readall [{'PUT'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/chats/{chat_id} [{'DELETE'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/chats/{chat_id}/participants [{'GET'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/uploads/{chat_id} [{'POST'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: /chat-api/uploads/files/{chat_id}/{filename} [{'GET'}]
+2025-04-24 02:09:57,987 - app.main - INFO - Route: / [{'GET'}]
+2025-04-24 02:09:58,024 - sqlalchemy.engine.Engine - INFO - select pg_catalog.version()
+2025-04-24 02:09:58,024 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:09:58,025 - sqlalchemy.engine.Engine - INFO - select current_schema()
+2025-04-24 02:09:58,025 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:09:58,026 - sqlalchemy.engine.Engine - INFO - show standard_conforming_strings
+2025-04-24 02:09:58,026 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:09:58,027 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:09:58,028 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:09:58,028 - sqlalchemy.engine.Engine - INFO - [generated in 0.00012s] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:09:58,037 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:09:58,037 - sqlalchemy.engine.Engine - INFO - [cached since 0.00832s ago] ('chat_participants', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:09:58,037 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:09:58,037 - sqlalchemy.engine.Engine - INFO - [cached since 0.009127s ago] ('messages', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:09:58,039 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-04-24 02:09:58,040 - app.main - INFO - Database tables created
+2025-04-24 02:09:58,360 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet OPEN data {'sid': 'O7IUJkis5VFLhlonAAAA', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:09:58,364 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received request to upgrade to websocket
+2025-04-24 02:09:58,365 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received packet MESSAGE data 0
+2025-04-24 02:09:58,365 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet MESSAGE data 0{"sid":"1SNn3kZtzc59x6KiAAAB"}
+2025-04-24 02:09:58,393 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Upgrade to websocket successful
+2025-04-24 02:09:58,394 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":1}]
+2025-04-24 02:09:58,394 - socketio.server - INFO - received event "join_chat" from 1SNn3kZtzc59x6KiAAAB [/]
+2025-04-24 02:09:58,394 - socketio.server - INFO - 1SNn3kZtzc59x6KiAAAB is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:09:58,394 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:09:58,395 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:09:58,408 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:09:58,409 - app.routes.chat - INFO - User 1 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:09:58,411 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:09:59,187 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet OPEN data {'sid': 'i6LW2iWqIyRSp9byAAAC', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:09:59,192 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received packet MESSAGE data 0
+2025-04-24 02:09:59,193 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet MESSAGE data 0{"sid":"JgqUpCtKTMUro5eoAAAD"}
+2025-04-24 02:09:59,200 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received request to upgrade to websocket
+2025-04-24 02:09:59,204 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Upgrade to websocket successful
+2025-04-24 02:09:59,205 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":2}]
+2025-04-24 02:09:59,205 - socketio.server - INFO - received event "join_chat" from JgqUpCtKTMUro5eoAAAD [/]
+2025-04-24 02:09:59,205 - socketio.server - INFO - JgqUpCtKTMUro5eoAAAD is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:09:59,205 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:09:59,205 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:09:59,205 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:09:59,215 - app.routes.chat - INFO - Получен ID пользователя: 2
+2025-04-24 02:09:59,215 - app.routes.chat - INFO - User 2 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:09:59,216 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:10:23,361 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet PING data None
+2025-04-24 02:10:23,367 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received packet PONG data 
+2025-04-24 02:10:24,188 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet PING data None
+2025-04-24 02:10:24,190 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received packet PONG data 
+2025-04-24 02:10:48,368 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet PING data None
+2025-04-24 02:10:48,371 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received packet PONG data 
+2025-04-24 02:10:49,191 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet PING data None
+2025-04-24 02:10:49,192 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received packet PONG data 
+2025-04-24 02:11:13,372 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Sending packet PING data None
+2025-04-24 02:11:13,374 - engineio.server - INFO - O7IUJkis5VFLhlonAAAA: Received packet PONG data 
+2025-04-24 02:11:14,193 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Sending packet PING data None
+2025-04-24 02:11:14,195 - engineio.server - INFO - i6LW2iWqIyRSp9byAAAC: Received packet PONG data 
+2025-04-24 02:11:24,878 - app.main - INFO - Chat service initialized with routes:
+2025-04-24 02:11:24,878 - app.main - INFO - Route: /api/v1/openapi.json [{'GET', 'HEAD'}]
+2025-04-24 02:11:24,878 - app.main - INFO - Route: /docs [{'GET', 'HEAD'}]
+2025-04-24 02:11:24,878 - app.main - INFO - Route: /docs/oauth2-redirect [{'GET', 'HEAD'}]
+2025-04-24 02:11:24,878 - app.main - INFO - Route: /redoc [{'GET', 'HEAD'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/me [{'GET'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{user_id} [{'GET'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats [{'POST'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'GET'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'POST'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages/readall [{'PUT'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{chat_id} [{'DELETE'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/chats/{chat_id}/participants [{'GET'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/uploads/{chat_id} [{'POST'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: /chat-api/uploads/files/{chat_id}/{filename} [{'GET'}]
+2025-04-24 02:11:24,879 - app.main - INFO - Route: / [{'GET'}]
+2025-04-24 02:11:24,908 - sqlalchemy.engine.Engine - INFO - select pg_catalog.version()
+2025-04-24 02:11:24,908 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:11:24,909 - sqlalchemy.engine.Engine - INFO - select current_schema()
+2025-04-24 02:11:24,909 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:11:24,910 - sqlalchemy.engine.Engine - INFO - show standard_conforming_strings
+2025-04-24 02:11:24,910 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:11:24,911 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:11:24,913 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:11:24,913 - sqlalchemy.engine.Engine - INFO - [generated in 0.00016s] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:11:24,917 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:11:24,917 - sqlalchemy.engine.Engine - INFO - [cached since 0.00448s ago] ('chat_participants', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:11:24,918 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:11:24,918 - sqlalchemy.engine.Engine - INFO - [cached since 0.005021s ago] ('messages', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:11:24,918 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-04-24 02:11:24,919 - app.main - INFO - Database tables created
+2025-04-24 02:11:25,108 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Sending packet OPEN data {'sid': '5SFdViJ95MGcuUfqAAAA', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:11:25,112 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Received request to upgrade to websocket
+2025-04-24 02:11:25,113 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Received packet MESSAGE data 0
+2025-04-24 02:11:25,113 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Sending packet MESSAGE data 0{"sid":"QDNeRTWSqR9dy8KVAAAB"}
+2025-04-24 02:11:25,133 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Upgrade to websocket successful
+2025-04-24 02:11:25,134 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":1}]
+2025-04-24 02:11:25,134 - socketio.server - INFO - received event "join_chat" from QDNeRTWSqR9dy8KVAAAB [/]
+2025-04-24 02:11:25,134 - socketio.server - INFO - QDNeRTWSqR9dy8KVAAAB is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:11:25,134 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:11:25,134 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:11:25,144 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:11:25,144 - app.routes.chat - INFO - User 1 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:11:25,147 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:11:25,170 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Sending packet OPEN data {'sid': 'RxqWVbe1680ShFY5AAAC', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:11:25,178 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Received request to upgrade to websocket
+2025-04-24 02:11:25,179 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Received packet MESSAGE data 0
+2025-04-24 02:11:25,179 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Sending packet MESSAGE data 0{"sid":"mwfp1vbsC1Uenb0nAAAD"}
+2025-04-24 02:11:25,194 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Upgrade to websocket successful
+2025-04-24 02:11:25,195 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":2}]
+2025-04-24 02:11:25,195 - socketio.server - INFO - received event "join_chat" from mwfp1vbsC1Uenb0nAAAD [/]
+2025-04-24 02:11:25,195 - socketio.server - INFO - mwfp1vbsC1Uenb0nAAAD is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:11:25,195 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:11:25,195 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:11:25,195 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:11:25,210 - app.routes.chat - INFO - Получен ID пользователя: 2
+2025-04-24 02:11:25,211 - app.routes.chat - INFO - User 2 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:11:25,213 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:11:32,404 - app.routes.chat - ERROR - Токен отсутствует или имеет неверный формат
+2025-04-24 02:11:50,109 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Sending packet PING data None
+2025-04-24 02:11:50,111 - engineio.server - INFO - 5SFdViJ95MGcuUfqAAAA: Received packet PONG data 
+2025-04-24 02:11:50,172 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Sending packet PING data None
+2025-04-24 02:11:50,174 - engineio.server - INFO - RxqWVbe1680ShFY5AAAC: Received packet PONG data 
+2025-04-24 02:12:09,106 - app.main - INFO - Chat service initialized with routes:
+2025-04-24 02:12:09,106 - app.main - INFO - Route: /api/v1/openapi.json [{'GET', 'HEAD'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /docs [{'GET', 'HEAD'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /docs/oauth2-redirect [{'GET', 'HEAD'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /redoc [{'GET', 'HEAD'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/me [{'GET'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{user_id} [{'GET'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats [{'POST'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'GET'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'POST'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages/readall [{'PUT'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{chat_id} [{'DELETE'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/chats/{chat_id}/participants [{'GET'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/uploads/{chat_id} [{'POST'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: /chat-api/uploads/files/{chat_id}/{filename} [{'GET'}]
+2025-04-24 02:12:09,107 - app.main - INFO - Route: / [{'GET'}]
+2025-04-24 02:12:09,139 - sqlalchemy.engine.Engine - INFO - select pg_catalog.version()
+2025-04-24 02:12:09,139 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:12:09,140 - sqlalchemy.engine.Engine - INFO - select current_schema()
+2025-04-24 02:12:09,140 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:12:09,141 - sqlalchemy.engine.Engine - INFO - show standard_conforming_strings
+2025-04-24 02:12:09,141 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:12:09,142 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:12:09,144 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:12:09,144 - sqlalchemy.engine.Engine - INFO - [generated in 0.00017s] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:12:09,152 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:12:09,153 - sqlalchemy.engine.Engine - INFO - [cached since 0.008378s ago] ('chat_participants', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:12:09,153 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:12:09,153 - sqlalchemy.engine.Engine - INFO - [cached since 0.008973s ago] ('messages', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:12:09,154 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-04-24 02:12:09,154 - app.main - INFO - Database tables created
+2025-04-24 02:12:09,395 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Sending packet OPEN data {'sid': 'ahn5hp1iawI8gBFBAAAA', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:09,400 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Received request to upgrade to websocket
+2025-04-24 02:12:09,400 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Received packet MESSAGE data 0
+2025-04-24 02:12:09,400 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Sending packet MESSAGE data 0{"sid":"MqQEj7eTXpNaUuS6AAAB"}
+2025-04-24 02:12:09,419 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Upgrade to websocket successful
+2025-04-24 02:12:09,420 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":1}]
+2025-04-24 02:12:09,420 - socketio.server - INFO - received event "join_chat" from MqQEj7eTXpNaUuS6AAAB [/]
+2025-04-24 02:12:09,420 - socketio.server - INFO - MqQEj7eTXpNaUuS6AAAB is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:09,421 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:09,421 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:12:09,431 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:09,431 - app.routes.chat - INFO - User 1 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:12:09,433 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:12:10,197 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet OPEN data {'sid': '6MHNL-G8znMaDI_KAAAC', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:10,204 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Received packet MESSAGE data 0
+2025-04-24 02:12:10,204 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 0{"sid":"qZMfSsyAM_s5hAupAAAD"}
+2025-04-24 02:12:10,214 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Received request to upgrade to websocket
+2025-04-24 02:12:10,223 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":2}]
+2025-04-24 02:12:10,223 - socketio.server - INFO - received event "join_chat" from qZMfSsyAM_s5hAupAAAD [/]
+2025-04-24 02:12:10,224 - socketio.server - INFO - qZMfSsyAM_s5hAupAAAD is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:10,224 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:10,231 - app.routes.chat - INFO - Получен ID пользователя: 2
+2025-04-24 02:12:10,231 - app.routes.chat - INFO - User 2 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:12:10,233 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:12:10,233 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:12:10,233 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 2["user_joined",{"user_id":2}]
+2025-04-24 02:12:10,234 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Upgrade to websocket successful
+2025-04-24 02:12:34,396 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Sending packet PING data None
+2025-04-24 02:12:34,401 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Received packet PONG data 
+2025-04-24 02:12:35,198 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet PING data None
+2025-04-24 02:12:35,204 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Received packet PONG data 
+2025-04-24 02:12:38,894 - engineio.server - INFO - ahn5hp1iawI8gBFBAAAA: Received packet MESSAGE data 1
+2025-04-24 02:12:40,306 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:40,308 - app.routes.chat - INFO - User 1 getting their chats
+2025-04-24 02:12:40,317 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:12:40,319 - sqlalchemy.engine.Engine - INFO - SELECT chats.id, chats.property_id, chats.created_at, chats.updated_at, chats.is_archived, chats.property_title, chats.property_image 
+FROM chats JOIN chat_participants ON chats.id = chat_participants.chat_id 
+WHERE chat_participants.user_id = $1::INTEGER ORDER BY chats.updated_at DESC
+2025-04-24 02:12:40,319 - sqlalchemy.engine.Engine - INFO - [generated in 0.00025s] (1,)
+2025-04-24 02:12:40,342 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:40,342 - app.routes.chat - INFO - User 1 getting their chats
+2025-04-24 02:12:40,358 - sqlalchemy.engine.Engine - INFO - SELECT chat_participants.chat_id AS chat_participants_chat_id, chat_participants.user_id AS chat_participants_user_id, chat_participants.joined_at AS chat_participants_joined_at, chat_participants.last_read_at AS chat_participants_last_read_at 
+FROM chat_participants 
+WHERE chat_participants.chat_id IN ($1::UUID)
+2025-04-24 02:12:40,358 - sqlalchemy.engine.Engine - INFO - [generated in 0.00022s] (UUID('122e5ad3-095a-4038-8ee6-5f03fb618c3e'),)
+2025-04-24 02:12:40,377 - app.routes.chat - INFO - Found 1 chats in PostgreSQL for user 1
+2025-04-24 02:12:40,380 - app.routes.chat - INFO - Fetching details for user 2 from main backend
+2025-04-24 02:12:40,391 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/2 "HTTP/1.1 200 OK"
+2025-04-24 02:12:40,391 - app.routes.chat - INFO - Fetching details for user 1 from main backend
+2025-04-24 02:12:40,399 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/1 "HTTP/1.1 200 OK"
+2025-04-24 02:12:40,399 - app.routes.chat - ERROR - Error sorting chats: 'ChatListDetail' object has no attribute 'updated_at'
+2025-04-24 02:12:40,399 - app.routes.chat - INFO - Returning 1 chats for user 1
+2025-04-24 02:12:40,400 - sqlalchemy.engine.Engine - INFO - ROLLBACK
+2025-04-24 02:12:40,400 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:12:40,400 - sqlalchemy.engine.Engine - INFO - SELECT chats.id, chats.property_id, chats.created_at, chats.updated_at, chats.is_archived, chats.property_title, chats.property_image 
+FROM chats JOIN chat_participants ON chats.id = chat_participants.chat_id 
+WHERE chat_participants.user_id = $1::INTEGER ORDER BY chats.updated_at DESC
+2025-04-24 02:12:40,400 - sqlalchemy.engine.Engine - INFO - [cached since 0.08126s ago] (1,)
+2025-04-24 02:12:40,405 - sqlalchemy.engine.Engine - INFO - SELECT chat_participants.chat_id AS chat_participants_chat_id, chat_participants.user_id AS chat_participants_user_id, chat_participants.joined_at AS chat_participants_joined_at, chat_participants.last_read_at AS chat_participants_last_read_at 
+FROM chat_participants 
+WHERE chat_participants.chat_id IN ($1::UUID)
+2025-04-24 02:12:40,405 - sqlalchemy.engine.Engine - INFO - [cached since 0.04663s ago] (UUID('122e5ad3-095a-4038-8ee6-5f03fb618c3e'),)
+2025-04-24 02:12:40,406 - app.routes.chat - INFO - Found 1 chats in PostgreSQL for user 1
+2025-04-24 02:12:40,407 - app.routes.chat - INFO - Fetching details for user 2 from main backend
+2025-04-24 02:12:40,410 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/2 "HTTP/1.1 200 OK"
+2025-04-24 02:12:40,411 - app.routes.chat - INFO - Fetching details for user 1 from main backend
+2025-04-24 02:12:40,416 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/1 "HTTP/1.1 200 OK"
+2025-04-24 02:12:40,417 - app.routes.chat - ERROR - Error sorting chats: 'ChatListDetail' object has no attribute 'updated_at'
+2025-04-24 02:12:40,417 - app.routes.chat - INFO - Returning 1 chats for user 1
+2025-04-24 02:12:40,417 - sqlalchemy.engine.Engine - INFO - ROLLBACK
+2025-04-24 02:12:40,459 - engineio.server - INFO - R3dCF6zpuVNGTES1AAAE: Sending packet OPEN data {'sid': 'R3dCF6zpuVNGTES1AAAE', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:40,459 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Sending packet OPEN data {'sid': 'hZd4BM9nvSAIFgyBAAAF', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:40,467 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Received request to upgrade to websocket
+2025-04-24 02:12:40,470 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Received packet MESSAGE data 0
+2025-04-24 02:12:40,472 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Sending packet MESSAGE data 0{"sid":"kSLnjvaqMRhA5wexAAAG"}
+2025-04-24 02:12:40,487 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Upgrade to websocket successful
+2025-04-24 02:12:40,489 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":1}]
+2025-04-24 02:12:40,489 - socketio.server - INFO - received event "join_chat" from kSLnjvaqMRhA5wexAAAG [/]
+2025-04-24 02:12:40,489 - socketio.server - INFO - kSLnjvaqMRhA5wexAAAG is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:40,489 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:40,489 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:12:40,490 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:12:40,499 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:40,499 - app.routes.chat - INFO - User 1 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:12:40,504 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:12:43,838 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Received packet MESSAGE data 20["send_message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"hhh","message_type":"text","temp_id":"temp_1745442763835_0.8821779646393657"}]
+2025-04-24 02:12:43,838 - socketio.server - INFO - received event "send_message" from kSLnjvaqMRhA5wexAAAG [/]
+2025-04-24 02:12:43,839 - app.services.chat_service - INFO - [ChatService] Сохранение сообщения для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e от пользователя 1. TempID: temp_1745442763835_0.8821779646393657
+2025-04-24 02:12:43,842 - app.services.chat_service - ERROR - Ошибка при сохранении сообщения 46489f03-b06d-4b6c-b222-a003597ea880 в Redis: A tuple item must be str, int, float or bytes.
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: A tuple item must be str, int, float or bytes.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/Desktop/estate_backend/chat_service/app/services/chat_service.py", line 117, in save_and_emit_message
+    results = pipeline.execute()
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1478, in execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/retry.py", line 46, in call_with_retry
+    return do()
+           ^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1479, in <lambda>
+    lambda: execute(conn, stack, raise_on_error),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1320, in _execute_transaction
+    all_cmds = connection.pack_commands(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 541, in pack_commands
+    for chunk in self._command_packer.pack(*cmd):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 70, in pack
+    raise DataError(value).with_traceback(traceback)
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+redis.exceptions.DataError: A tuple item must be str, int, float or bytes.
+2025-04-24 02:12:43,849 - app.services.chat_service - ERROR - Ошибка при сохранении/отправке сообщения для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e: A tuple item must be str, int, float or bytes.
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: A tuple item must be str, int, float or bytes.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/Desktop/estate_backend/chat_service/app/services/chat_service.py", line 117, in save_and_emit_message
+    results = pipeline.execute()
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1478, in execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/retry.py", line 46, in call_with_retry
+    return do()
+           ^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1479, in <lambda>
+    lambda: execute(conn, stack, raise_on_error),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1320, in _execute_transaction
+    all_cmds = connection.pack_commands(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 541, in pack_commands
+    for chunk in self._command_packer.pack(*cmd):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 70, in pack
+    raise DataError(value).with_traceback(traceback)
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+redis.exceptions.DataError: A tuple item must be str, int, float or bytes.
+2025-04-24 02:12:43,852 - socketio.server - INFO - emitting event "message" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:43,853 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 2["message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"hhh","message_type":"text","temp_id":"temp_1745442763835_0.8821779646393657"}]
+2025-04-24 02:12:43,853 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Sending packet MESSAGE data 2["message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"hhh","message_type":"text","temp_id":"temp_1745442763835_0.8821779646393657"}]
+2025-04-24 02:12:43,853 - engineio.server - INFO - hZd4BM9nvSAIFgyBAAAF: Sending packet MESSAGE data 30[]
+2025-04-24 02:12:52,136 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:52,151 - app.routes.chat - INFO - User 1 getting their chats
+2025-04-24 02:12:52,166 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:12:52,178 - sqlalchemy.engine.Engine - INFO - SELECT chats.id, chats.property_id, chats.created_at, chats.updated_at, chats.is_archived, chats.property_title, chats.property_image 
+FROM chats JOIN chat_participants ON chats.id = chat_participants.chat_id 
+WHERE chat_participants.user_id = $1::INTEGER ORDER BY chats.updated_at DESC
+2025-04-24 02:12:52,179 - sqlalchemy.engine.Engine - INFO - [cached since 11.86s ago] (1,)
+2025-04-24 02:12:52,190 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:52,191 - app.routes.chat - INFO - User 1 getting their chats
+2025-04-24 02:12:52,192 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:12:52,193 - sqlalchemy.engine.Engine - INFO - SELECT chats.id, chats.property_id, chats.created_at, chats.updated_at, chats.is_archived, chats.property_title, chats.property_image 
+FROM chats JOIN chat_participants ON chats.id = chat_participants.chat_id 
+WHERE chat_participants.user_id = $1::INTEGER ORDER BY chats.updated_at DESC
+2025-04-24 02:12:52,193 - sqlalchemy.engine.Engine - INFO - [cached since 11.87s ago] (1,)
+2025-04-24 02:12:52,197 - sqlalchemy.engine.Engine - INFO - SELECT chat_participants.chat_id AS chat_participants_chat_id, chat_participants.user_id AS chat_participants_user_id, chat_participants.joined_at AS chat_participants_joined_at, chat_participants.last_read_at AS chat_participants_last_read_at 
+FROM chat_participants 
+WHERE chat_participants.chat_id IN ($1::UUID)
+2025-04-24 02:12:52,198 - sqlalchemy.engine.Engine - INFO - [cached since 11.84s ago] (UUID('122e5ad3-095a-4038-8ee6-5f03fb618c3e'),)
+2025-04-24 02:12:52,200 - sqlalchemy.engine.Engine - INFO - SELECT chat_participants.chat_id AS chat_participants_chat_id, chat_participants.user_id AS chat_participants_user_id, chat_participants.joined_at AS chat_participants_joined_at, chat_participants.last_read_at AS chat_participants_last_read_at 
+FROM chat_participants 
+WHERE chat_participants.chat_id IN ($1::UUID)
+2025-04-24 02:12:52,200 - sqlalchemy.engine.Engine - INFO - [cached since 11.84s ago] (UUID('122e5ad3-095a-4038-8ee6-5f03fb618c3e'),)
+2025-04-24 02:12:52,201 - app.routes.chat - INFO - Found 1 chats in PostgreSQL for user 1
+2025-04-24 02:12:52,202 - app.routes.chat - INFO - Fetching details for user 2 from main backend
+2025-04-24 02:12:52,204 - app.routes.chat - INFO - Found 1 chats in PostgreSQL for user 1
+2025-04-24 02:12:52,206 - app.routes.chat - INFO - Fetching details for user 2 from main backend
+2025-04-24 02:12:52,212 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/2 "HTTP/1.1 200 OK"
+2025-04-24 02:12:52,213 - app.routes.chat - INFO - Fetching details for user 1 from main backend
+2025-04-24 02:12:52,214 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/2 "HTTP/1.1 200 OK"
+2025-04-24 02:12:52,214 - app.routes.chat - INFO - Fetching details for user 1 from main backend
+2025-04-24 02:12:52,219 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/1 "HTTP/1.1 200 OK"
+2025-04-24 02:12:52,219 - app.routes.chat - ERROR - Error sorting chats: 'ChatListDetail' object has no attribute 'updated_at'
+2025-04-24 02:12:52,219 - app.routes.chat - INFO - Returning 1 chats for user 1
+2025-04-24 02:12:52,220 - sqlalchemy.engine.Engine - INFO - ROLLBACK
+2025-04-24 02:12:52,220 - httpx - INFO - HTTP Request: GET http://localhost:8000/users/1 "HTTP/1.1 200 OK"
+2025-04-24 02:12:52,220 - app.routes.chat - ERROR - Error sorting chats: 'ChatListDetail' object has no attribute 'updated_at'
+2025-04-24 02:12:52,220 - app.routes.chat - INFO - Returning 1 chats for user 1
+2025-04-24 02:12:52,221 - sqlalchemy.engine.Engine - INFO - ROLLBACK
+2025-04-24 02:12:52,264 - engineio.server - INFO - l-iWVRDVPZnGfNNBAAAH: Sending packet OPEN data {'sid': 'l-iWVRDVPZnGfNNBAAAH', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:52,265 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Sending packet OPEN data {'sid': 'VKLoati-nlVynZCXAAAI', 'upgrades': ['websocket'], 'pingTimeout': 60000, 'pingInterval': 25000, 'maxPayload': 100000000.0}
+2025-04-24 02:12:52,274 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Received packet MESSAGE data 0
+2025-04-24 02:12:52,276 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Sending packet MESSAGE data 0{"sid":"wAh35UnrOP1jJ-67AAAJ"}
+2025-04-24 02:12:52,289 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Received request to upgrade to websocket
+2025-04-24 02:12:52,296 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Upgrade to websocket successful
+2025-04-24 02:12:52,298 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Received packet MESSAGE data 2["join_chat",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","user_id":1}]
+2025-04-24 02:12:52,298 - socketio.server - INFO - received event "join_chat" from wAh35UnrOP1jJ-67AAAJ [/]
+2025-04-24 02:12:52,302 - socketio.server - INFO - wAh35UnrOP1jJ-67AAAJ is entering room 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:52,302 - socketio.server - INFO - emitting event "user_joined" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:52,302 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:12:52,302 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Sending packet MESSAGE data 2["user_joined",{"user_id":1}]
+2025-04-24 02:12:52,318 - app.routes.chat - INFO - Получен ID пользователя: 1
+2025-04-24 02:12:52,318 - app.routes.chat - INFO - User 1 getting messages for chat 122e5ad3-095a-4038-8ee6-5f03fb618c3e (before=None, limit=50)
+2025-04-24 02:12:52,329 - app.routes.chat - INFO - Успешно получено и обработано 8 сообщений для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e перед сортировкой
+2025-04-24 02:12:56,144 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Received packet MESSAGE data 20["send_message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"gg","message_type":"text","temp_id":"temp_1745442776142_0.6429196488558919"}]
+2025-04-24 02:12:56,145 - socketio.server - INFO - received event "send_message" from wAh35UnrOP1jJ-67AAAJ [/]
+2025-04-24 02:12:56,145 - app.services.chat_service - INFO - [ChatService] Сохранение сообщения для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e от пользователя 1. TempID: temp_1745442776142_0.6429196488558919
+2025-04-24 02:12:56,147 - app.services.chat_service - ERROR - Ошибка при сохранении сообщения 69f9e956-3c25-409b-a912-c9d4d7364a34 в Redis: A tuple item must be str, int, float or bytes.
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: A tuple item must be str, int, float or bytes.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/Desktop/estate_backend/chat_service/app/services/chat_service.py", line 117, in save_and_emit_message
+    results = pipeline.execute()
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1478, in execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/retry.py", line 46, in call_with_retry
+    return do()
+           ^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1479, in <lambda>
+    lambda: execute(conn, stack, raise_on_error),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1320, in _execute_transaction
+    all_cmds = connection.pack_commands(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 541, in pack_commands
+    for chunk in self._command_packer.pack(*cmd):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 70, in pack
+    raise DataError(value).with_traceback(traceback)
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+redis.exceptions.DataError: A tuple item must be str, int, float or bytes.
+2025-04-24 02:12:56,148 - app.services.chat_service - ERROR - Ошибка при сохранении/отправке сообщения для чата 122e5ad3-095a-4038-8ee6-5f03fb618c3e: A tuple item must be str, int, float or bytes.
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: A tuple item must be str, int, float or bytes.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aminjonkhaidarov/Desktop/estate_backend/chat_service/app/services/chat_service.py", line 117, in save_and_emit_message
+    results = pipeline.execute()
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1478, in execute
+    return conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/retry.py", line 46, in call_with_retry
+    return do()
+           ^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1479, in <lambda>
+    lambda: execute(conn, stack, raise_on_error),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/client.py", line 1320, in _execute_transaction
+    all_cmds = connection.pack_commands(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 541, in pack_commands
+    for chunk in self._command_packer.pack(*cmd):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 70, in pack
+    raise DataError(value).with_traceback(traceback)
+  File "/Users/aminjonkhaidarov/.pyenv/versions/3.11.8/lib/python3.11/site-packages/redis/connection.py", line 67, in pack
+    output.append(hiredis.pack_command(args))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+redis.exceptions.DataError: A tuple item must be str, int, float or bytes.
+2025-04-24 02:12:56,151 - socketio.server - INFO - emitting event "message" to 122e5ad3-095a-4038-8ee6-5f03fb618c3e [/]
+2025-04-24 02:12:56,151 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet MESSAGE data 2["message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"gg","message_type":"text","temp_id":"temp_1745442776142_0.6429196488558919"}]
+2025-04-24 02:12:56,151 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Sending packet MESSAGE data 2["message",{"chat_id":"122e5ad3-095a-4038-8ee6-5f03fb618c3e","sender_id":1,"content":"gg","message_type":"text","temp_id":"temp_1745442776142_0.6429196488558919"}]
+2025-04-24 02:12:56,151 - engineio.server - INFO - VKLoati-nlVynZCXAAAI: Sending packet MESSAGE data 30[]
+2025-04-24 02:13:00,205 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Sending packet PING data None
+2025-04-24 02:13:00,207 - engineio.server - INFO - 6MHNL-G8znMaDI_KAAAC: Received packet PONG data 
+2025-04-24 02:13:02,672 - app.main - INFO - Chat service initialized with routes:
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /api/v1/openapi.json [{'GET', 'HEAD'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /docs [{'GET', 'HEAD'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /docs/oauth2-redirect [{'GET', 'HEAD'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /redoc [{'GET', 'HEAD'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/me [{'GET'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{user_id} [{'GET'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats [{'POST'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'GET'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages [{'POST'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{chat_id}/messages/readall [{'PUT'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{chat_id} [{'DELETE'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/chats/{chat_id}/participants [{'GET'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/uploads/{chat_id} [{'POST'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: /chat-api/uploads/files/{chat_id}/{filename} [{'GET'}]
+2025-04-24 02:13:02,672 - app.main - INFO - Route: / [{'GET'}]
+2025-04-24 02:13:02,707 - sqlalchemy.engine.Engine - INFO - select pg_catalog.version()
+2025-04-24 02:13:02,707 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:13:02,709 - sqlalchemy.engine.Engine - INFO - select current_schema()
+2025-04-24 02:13:02,709 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:13:02,710 - sqlalchemy.engine.Engine - INFO - show standard_conforming_strings
+2025-04-24 02:13:02,710 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-04-24 02:13:02,711 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-04-24 02:13:02,713 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:13:02,713 - sqlalchemy.engine.Engine - INFO - [generated in 0.00015s] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:13:02,725 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:13:02,726 - sqlalchemy.engine.Engine - INFO - [cached since 0.01266s ago] ('chat_participants', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:13:02,726 - sqlalchemy.engine.Engine - INFO - SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2025-04-24 02:13:02,726 - sqlalchemy.engine.Engine - INFO - [cached since 0.01322s ago] ('messages', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2025-04-24 02:13:02,727 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-04-24 02:13:02,727 - app.main - INFO - Database tables created

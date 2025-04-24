@@ -1,27 +1,23 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-// import { FaRegComments } from 'react-icons/fa'; 
-import { MessagesSquare } from 'lucide-react'; // Используем иконку из Lucide
+"use client";
+import { MessagesSquare } from "lucide-react";
+import { motion } from "framer-motion";
 
-const SelectChatPlaceholder: React.FC = () => {
+const SelectChatPlaceholder = () => {
   return (
-    // <<< Убираем градиент, делаем фон прозрачным >>>
-    // Контейнер для центрирования карточки
-    <div className="flex items-center justify-center h-full p-4 md:p-8 bg-transparent">
-      {/* <<< Карточка с рамкой и тенью >>> */}
-      <motion.div 
-          className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-10 max-w-md w-full flex flex-col items-center text-center"
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} // Expo-out easing
+    <div className="flex items-center justify-center h-full p-4 md:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex flex-col items-center text-center max-w-md"
       >
-        {/* Стилизованная иконка */}
-        <div className="p-5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full shadow-lg mb-8 ring-4 ring-white/60">
-          <MessagesSquare className="w-20 h-20 text-indigo-600" strokeWidth={1.5} />
+        <div className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center shadow-inner">
+          <MessagesSquare className="w-8 h-8 text-gray-400" strokeWidth={1.5} />
         </div>
-        {/* Обновленный текст */}
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Выберите чат</h2>
-        <p className="text-gray-500 text-base">
+        <h3 className="text-xl font-medium text-gray-700 mb-2">
+          Выберите чат
+        </h3>
+        <p className="text-sm text-gray-500 max-w-sm">
           Выберите существующий диалог из списка слева, чтобы продолжить общение.
         </p>
       </motion.div>

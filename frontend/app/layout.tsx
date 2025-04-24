@@ -14,8 +14,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 // Раскомментируем Metadata
 export const metadata: Metadata = {
-  title: "Estate",
-  description: "Платформа для поиска недвижимости",
+  title: 'MANZIL',
+  description: 'Find your dream home in Tajikistan',
 };
 
 // Удаляем константы анимаций

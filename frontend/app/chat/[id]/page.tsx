@@ -456,66 +456,69 @@ const ChatPage = ({ params }: PageProps) => {
   const headerImageUrl = getFirstImageUrl(propertyInfo);
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 pt-20">
-      <div className="flex h-full mx-auto">
-        <div className="w-full md:w-[250px] lg:w-[300px] h-full flex flex-col border-r border-gray-200 bg-white">
-          <div className="p-4 md:p-5 border-b border-gray-200 flex items-center flex-shrink-0">
-            <button
-              onClick={() => router.push("/properties")}
-              className="mr-4 text-gray-500 hover:text-gray-700 transition-colors"
-              title="Назад к объявлениям"
-            >
-              <FaArrowLeft size={20} />
-            </button>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Сообщения
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            <ChatList
-              chats={chats}
-              currentChatId={params.id}
-              onSelectChat={handleSelectChat}
-              isLoading={chatsLoading}
-              error={chatsError}
-              onOpenDeleteModal={openDeleteModal}
-            />
-          </div>
-        </div>
-
-        {/* Центральная колонка: Виджет чата */}
-        <div className="flex-1 h-full min-w-0">
-          {params.id === 'new' ? (
-            <SelectChatPlaceholder key="selectPlaceholder" />
-          ) : !propertyInfo || !user ? (
-            <div className="flex items-center justify-center h-full p-4 md:p-8">
-              <motion.div
-                key="warningCard"
-                className="bg-yellow-50 rounded-2xl shadow-lg border border-yellow-200/50 p-8 max-w-md w-full flex flex-col items-center text-center"
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+    <div className="fixed inset-0 pt-[64px] bg-[#f8fafc]">
+      <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-full bg-white/60 backdrop-blur-sm rounded-2xl shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-100">
+          {/* Левая колонка со списком чатов */}
+          <div className="w-full md:w-[250px] lg:w-[300px] h-full flex flex-col bg-gray-50/50">
+            <div className="p-4 md:p-5 border-b border-gray-100 flex items-center flex-shrink-0 bg-white/50 backdrop-blur-sm">
+              <button
+                onClick={() => router.push("/properties")}
+                className="mr-4 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Назад к объявлениям"
               >
-                <FaExclamationTriangle className="w-12 h-12 text-yellow-500 mb-5" />
-                <h2 className="text-xl font-medium text-yellow-800 mb-2">
-                  Не удалось загрузить данные
-                </h2>
-                <p className="text-sm text-yellow-700">
-                  Возможно, этот чат был удален или информация о нем недоступна.
-                </p>
-              </motion.div>
+                <FaArrowLeft size={18} />
+              </button>
+              <h2 className="text-lg font-medium text-gray-700">
+                Сообщения
+              </h2>
             </div>
-          ) : (
-            <ChatWidget
-              key={params.id}
-              chatId={params.id}
-              userId={user.id}
-              property={propertyInfo}
-              participantDetails={participantDetails || {}}
-              isLoadingParticipants={isLoadingParticipants}
-              onSendFilesAndMessage={handleSendFilesAndMessage}
-            />
-          )}
+            <div className="flex-1 overflow-y-auto p-2 bg-transparent">
+              <ChatList
+                chats={chats}
+                currentChatId={params.id}
+                onSelectChat={handleSelectChat}
+                isLoading={chatsLoading}
+                error={chatsError}
+                onOpenDeleteModal={openDeleteModal}
+              />
+            </div>
+          </div>
+
+          {/* Центральная колонка: Виджет чата */}
+          <div className="flex-1 h-full min-w-0 bg-white/30 backdrop-blur-[2px]">
+            {params.id === 'new' ? (
+              <SelectChatPlaceholder key="selectPlaceholder" />
+            ) : !propertyInfo || !user ? (
+              <div className="flex items-center justify-center h-full p-4 md:p-8">
+                <motion.div
+                  key="warningCard"
+                  className="bg-orange-50/80 backdrop-blur-sm rounded-2xl shadow-sm border border-orange-100 p-8 max-w-md w-full flex flex-col items-center text-center"
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <FaExclamationTriangle className="w-12 h-12 text-orange-400 mb-5" />
+                  <h2 className="text-xl font-medium text-orange-800 mb-2">
+                    Не удалось загрузить данные
+                  </h2>
+                  <p className="text-sm text-orange-700/80">
+                    Возможно, этот чат был удален или информация о нем недоступна.
+                  </p>
+                </motion.div>
+              </div>
+            ) : (
+              <ChatWidget
+                key={params.id}
+                chatId={params.id}
+                userId={user.id}
+                property={propertyInfo}
+                participantDetails={participantDetails || {}}
+                isLoadingParticipants={isLoadingParticipants}
+                onSendFilesAndMessage={handleSendFilesAndMessage}
+              />
+            )}
+          </div>
         </div>
       </div>
 

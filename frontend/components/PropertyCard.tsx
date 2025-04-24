@@ -9,6 +9,7 @@ const BASE_URL = "http://localhost:8000";
 interface Image {
   id: number;
   image_url: string;
+  is_main?: boolean;
 }
 
 interface Property {
@@ -22,6 +23,25 @@ interface Property {
   address: string;
   created_at: string;
 }
+
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: Property): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/placeholder.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  return `${BASE_URL}/uploads/properties/${imageUrl}`;
+};
 
 const formatDate = (dateString: string) => {
   if (!dateString) return 'Дата не указана';
@@ -68,7 +88,7 @@ export default function PropertyCard({ property, onEdit, onDelete, showActions =
       {/* Контейнер для изображения фиксированного размера */}
       <div className="relative w-full h-[240px]">
         <Image
-          src={property.images?.[0]?.image_url || '/placeholder.jpg'}
+          src={getMainImageUrl(property)}
           alt={property.title}
           fill
           className="object-cover"

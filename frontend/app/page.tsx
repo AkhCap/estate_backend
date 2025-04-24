@@ -10,6 +10,8 @@ import { formatPrice } from "../lib/utils";
 import Image from 'next/image'; // <<< Добавляем импорт Image из next/image >>>
 import Footer from "../components/Footer"; // <<< Добавляем импорт Footer >>>
 import { CheckCircle, Search, Users, Quote } from 'lucide-react'; // Удаляем Handshake из импорта
+import SearchHero from './components/SearchHero';
+import PopularDistricts from './components/PopularDistricts';
 
 // <<< Определяем базовый URL API (лучше через .env.local) >>>
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -18,6 +20,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 interface Image {
     id: number;
     image_url: string;
+    is_main?: boolean;
 }
 
 interface Property {
@@ -32,6 +35,7 @@ interface Property {
     created_at: string;
     owner_id: number;
     is_viewed?: boolean; // Добавляем поле для значка "Просмотрено"
+    floor?: string;
 }
 
 interface Filters {
@@ -191,6 +195,25 @@ const sectionVariants = {
     }
 };
 
+// Функция для получения главного изображения объявления
+const getMainImageUrl = (property: Property): string => {
+  if (!property.images || property.images.length === 0) {
+    return "/no-image.jpg";
+  }
+  
+  // Ищем главное изображение
+  const mainImage = property.images.find(img => img.is_main);
+  
+  // Если главное изображение не найдено, берем первое
+  const imageUrl = mainImage ? mainImage.image_url : property.images[0].image_url;
+  
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+  
+  return `${BASE_URL}/uploads/properties/${imageUrl}`;
+};
+
 export default function HomePage() {
     const router = useRouter();
     const { user } = useAuth(); // Получаем пользователя для избранного и т.д.
@@ -340,182 +363,220 @@ export default function HomePage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-800 overflow-x-hidden"> {/* Добавляем overflow-x-hidden */}
-            {/* Hero Section */}
-            <section className="relative h-[70vh] min-h-[500px] flex items-center justify-center bg-gradient-to-br from-blue-900 to-emerald-900">
-                {/* Контент */}
-                <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
-                        Найди свой идеальный дом
-                    </h1>
-                    <p className="text-lg text-gray-200 mb-8">
-                        Исследуй тысячи предложений недвижимости легко и удобно.
-                    </p>
-
-                    {/* Поисковая форма */}
-                    <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                            {/* Локация */}
-                            <div className="md:col-span-5 relative">
-                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                    <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Город, район, улица..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                    value={filters.location}
-                                    onChange={(e) => handleFilterChange('location', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Тип сделки */}
-                            <div className="md:col-span-3 relative">
-                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                    <FaHome className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <select
-                                    className="w-full pl-10 pr-8 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white"
-                                    value={filters.deal_type}
-                                    onChange={(e) => handleFilterChange('deal_type', e.target.value)}
-                                >
-                                    <option>Любой тип</option>
-                                    <option>Купить</option>
-                                    <option>Снять</option>
-                                </select>
-                            </div>
-
-                            {/* Комнаты */}
-                            <div className="md:col-span-2 relative">
-                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                    <FaBed className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <select
-                                    className="w-full pl-10 pr-8 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white"
-                                    value={filters.rooms}
-                                    onChange={(e) => handleFilterChange('rooms', e.target.value)}
-                                >
-                                    <option>Любое</option>
-                                    <option>1</option>
-                                    <option>2</option>
-                                    <option>3</option>
-                                    <option>4+</option>
-                                </select>
-                            </div>
-
-                            {/* Кнопка поиска */}
-                            <div className="md:col-span-2">
-                                <button
-                                    className="w-full px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
-                                >
-                                    <FaSearch className="h-5 w-5" />
-                                    <span>Найти</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Дополнительные фильтры */}
-                        <div className="mt-3 flex justify-center">
-                            <button className="text-gray-600 hover:text-emerald-600 text-sm font-medium transition-colors flex items-center space-x-1">
-                                <span>Больше фильтров</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Информационная секция - добавляем анимацию */}
+        <main className="min-h-screen bg-gray-50">
+            <SearchHero />
+            <PopularDistricts />
+            
+            {/* Новая секция со статистикой */}
             <motion.section 
-                className="py-16 bg-gray-50" 
+                className="py-16 bg-gradient-to-br from-[#19376D] to-[#19376D]/90 text-white"
                 variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.2 }}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
-                        {/* <<< Оборачиваем блок в "карточку" >>> */}
-                        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100"> 
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8">Почему выбирают нас?</h2>
-                            <ul className="space-y-6"> {/* Увеличиваем space-y */} 
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-green-50 transition-colors duration-200"> {/* Добавляем hover и padding */} 
-                                    <div className="flex-shrink-0">
-                                        {/* <<< Увеличиваем иконку >>> */}
-                                        <CheckCircle className="h-7 w-7 text-green-500 group-hover:text-green-600" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">Большая база объектов</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Тысячи актуальных объявлений квартир, домов и коммерческой недвижимости.</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-green-50 transition-colors duration-200">
-                                    <div className="flex-shrink-0">
-                                        <CheckCircle className="h-7 w-7 text-green-500 group-hover:text-green-600" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">Проверенные объявления</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Мы тщательно проверяем информацию, чтобы вы были уверены в своем выборе.</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-green-50 transition-colors duration-200">
-                                    <div className="flex-shrink-0">
-                                        <CheckCircle className="h-7 w-7 text-green-500 group-hover:text-green-600" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">Удобный поиск и фильтры</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Настройте поиск под свои нужды с помощью детальных фильтров.</p>
-                                    </div>
-                                </li>
-                            </ul>
+                    {/* Статистика */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+                        <div className="text-center">
+                            <div className="text-4xl font-bold mb-2">5,000+</div>
+                            <div className="text-gray-300">Объектов</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-4xl font-bold mb-2">1,200+</div>
+                            <div className="text-gray-300">Клиентов</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-4xl font-bold mb-2">500+</div>
+                            <div className="text-gray-300">Агентов</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-4xl font-bold mb-2">98%</div>
+                            <div className="text-gray-300">Довольных клиентов</div>
+                        </div>
+                    </div>
+
+                    {/* Преимущества */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
+                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Search className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-semibold mb-4">Умный поиск</h3>
+                            <p className="text-gray-300">
+                                Используйте расширенные фильтры для поиска идеального варианта. Находите объекты по районам, цене, площади и другим параметрам.
+                            </p>
                         </div>
 
-                        {/* <<< Оборачиваем блок в "карточку" >>> */}
-                        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8">Как это работает?</h2>
-                            <ol className="space-y-6"> {/* Увеличиваем space-y */} 
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200"> {/* Добавляем hover и padding */} 
-                                    <div className="flex-shrink-0">
-                                        {/* <<< Увеличиваем padding иконки в круге >>> */}
-                                        <div className="flex items-center justify-center h-11 w-11 rounded-full bg-blue-50 border border-blue-200 group-hover:bg-blue-100 transition-colors duration-200">
-                                            <Search className="h-5 w-5 text-blue-600" />
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">1. Найдите</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Используйте поиск и фильтры, чтобы найти подходящие вам варианты.</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200">
-                                    <div className="flex-shrink-0">
-                                        <div className="flex items-center justify-center h-11 w-11 rounded-full bg-blue-50 border border-blue-200 group-hover:bg-blue-100 transition-colors duration-200">
-                                            <Users className="h-5 w-5 text-blue-600" />
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">2. Свяжитесь</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Свяжитесь с владельцем или агентом напрямую через нашу платформу.</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-start group p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200">
-                                    <div className="flex-shrink-0">
-                                        <div className="flex items-center justify-center h-11 w-11 rounded-full bg-blue-50 border border-blue-200 group-hover:bg-blue-100 transition-colors duration-200">
-                                            <Quote className="h-5 w-5 text-blue-600" />
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <h4 className="text-lg font-medium text-gray-900">3. Заключите сделку</h4>
-                                        <p className="mt-1 text-sm text-gray-600">Договоритесь об условиях и оформите сделку безопасно.</p>
-                                    </div>
-                                </li>
-                            </ol>
+                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
+                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Users className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-semibold mb-4">Проверенные агенты</h3>
+                            <p className="text-gray-300">
+                                Работайте только с проверенными специалистами. Все агенты проходят тщательную проверку и имеют подтвержденный рейтинг.
+                            </p>
+                        </div>
+
+                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
+                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <CheckCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-semibold mb-4">Безопасные сделки</h3>
+                            <p className="text-gray-300">
+                                Гарантируем безопасность всех сделок. Предоставляем юридическую поддержку и проверку документов на всех этапах.
+                            </p>
                         </div>
                     </div>
                 </div>
             </motion.section>
 
-            {/* <<< Новая секция: Отзывы клиентов >>> */}
+            {/* Секция объявлений */}
+            <motion.section 
+                className="py-16 bg-gray-50" 
+                variants={sectionVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.1 }}
+            >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center mb-8 md:mb-12">
+                        <h2 className="text-2xl md:text-3xl font-bold">Новые объявления</h2>
+                        <Link
+                            href="/properties"
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                            Смотреть все
+                        </Link>
+                    </div>
+
+                    {loading ? (
+                        <div className="text-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-12 text-red-600">
+                            <p>{error}</p>
+                        </div>
+                    ) : properties.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            <p>Пока нет доступных объявлений.</p>
+                        </div>
+                    ) : (
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                            initial="hidden"
+                            animate="show"
+                            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+                        >
+                            {properties.map((property, index) => (
+                                <motion.div
+                                    key={property.id}
+                                    variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+                                    className="group"
+                                >
+                                    <Link href={`/properties/${property.id}`}>
+                                        <div className="bg-white rounded-3xl shadow-sm overflow-hidden transition-all duration-500 ease-in-out hover:shadow-md h-full flex flex-col relative group/card">
+                                            {/* Изображение с градиентом */}
+                                            <div className="relative h-[240px] flex-shrink-0 overflow-hidden">
+                                                <Image
+                                                    src={getMainImageUrl(property)}
+                                                    alt={property.title}
+                                                    fill
+                                                    style={{ objectFit: 'cover' }}
+                                                    className="transition-transform duration-700 ease-out group-hover/card:scale-105"
+                                                    onError={(e) => { 
+                                                        const target = e.currentTarget;
+                                                        target.srcset = '';
+                                                        target.src = '/no-image.jpg'; 
+                                                    }}
+                                                />
+                                                {/* Полупрозрачный оверлей с градиентом */}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 ease-in-out" />
+                                                
+                                                {/* Тип сделки */}
+                                                <div className="absolute top-4 left-4 px-3 py-1 bg-black/30 backdrop-blur-md rounded-full text-white text-xs font-medium z-10 transition-transform duration-300 ease-out group-hover/card:translate-y-0.5">
+                                                    {property.deal_type === 'sale' ? 'Продажа' : 
+                                                     property.deal_type === 'rent' ? 'Аренда' : 'Посуточно'}
+                                                </div>
+
+                                                {/* Кнопка избранного */}
+                                                <button
+                                                    onClick={(e) => toggleFavorite(e, property.id)}
+                                                    className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ease-out backdrop-blur-md z-10 ${
+                                                        favorites.has(property.id)
+                                                        ? 'bg-white/10 text-red-500'
+                                                        : 'bg-white/10 text-white hover:text-red-500'
+                                                    }`}
+                                                    aria-label={favorites.has(property.id) ? "Удалить из избранного" : "Добавить в избранное"}
+                                                >
+                                                    <FaHeart className={`w-4 h-4 transition-transform duration-500 ease-out ${favorites.has(property.id) ? 'scale-110' : 'scale-100'}`} />
+                                                </button>
+
+                                                {/* Цена */}
+                                                <div className="absolute bottom-4 inset-x-4 flex items-end justify-between z-10 transition-transform duration-300 ease-out group-hover/card:translate-y-[-0.5rem]">
+                                                    <div>
+                                                        <p className="text-2xl font-bold text-white mb-1 transition-transform duration-300 ease-out group-hover/card:translate-y-[-0.25rem]">{formatPrice(property.price)}</p>
+                                                        {(property.deal_type === 'rent' || property.deal_type === 'daily') && (
+                                                            <p className="text-xs text-white/70">
+                                                                за {property.deal_type === 'rent' ? 'месяц' : 'сутки'}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {property.is_viewed && property.owner_id !== currentUserId && (
+                                                        <div className="bg-green-500/20 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs flex items-center gap-1.5 transition-opacity duration-300 ease-out group-hover/card:opacity-80">
+                                                            <FaCheck className="w-3 h-3" />
+                                                            Просмотрено
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Информация */}
+                                            <div className="p-5 flex-grow flex flex-col transition-transform duration-300 ease-out group-hover/card:translate-y-[-0.25rem]">
+                                                {/* Заголовок */}
+                                                <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1 group-hover/card:text-blue-600 transition-colors duration-300 ease-out">
+                                                    {property.title}
+                                                </h3>
+
+                                                {/* Основные характеристики */}
+                                                <div className="flex items-center gap-3 text-sm text-gray-600 mb-2 transition-opacity duration-300 ease-out group-hover/card:opacity-90">
+                                                    <span>{property.rooms?.toLowerCase() === 'студия' ? 'Студия' : `${property.rooms}-комн.`}</span>
+                                                    <span className="h-3 w-px bg-gray-300"></span>
+                                                    <span>{property.area} м²</span>
+                                                    {property.floor && (
+                                                        <>
+                                                            <span className="h-3 w-px bg-gray-300"></span>
+                                                            <span>{property.floor} этаж</span>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* Адрес */}
+                                                <div className="flex text-gray-500 mb-2 transition-opacity duration-300 ease-out group-hover/card:opacity-90">
+                                                    <p className="text-sm pr-2 truncate">{property.address}</p>
+                                                </div>
+
+                                                {/* Дата публикации */}
+                                                <div className="mt-auto pt-2 border-t border-gray-100 transition-opacity duration-300 ease-out group-hover/card:opacity-80">
+                                                    <div className="flex items-center text-xs text-gray-400">
+                                                        <FaRegCalendarAlt className="w-3.5 h-3.5 mr-1.5" />
+                                                        {formatDateLocal(property.created_at)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    )}
+                </div>
+            </motion.section>
+
+            {/* Отзывы клиентов */}
             <motion.section
-                className="py-16 bg-gray-50" // Фон как у основной страницы
+                className="py-16 bg-white"
                 variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
@@ -555,139 +616,6 @@ export default function HomePage() {
                 </div>
             </motion.section>
 
-            {/* Секция объявлений - добавляем анимацию */}
-            <motion.section 
-                className="py-16" 
-                variants={sectionVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.1 }} // Меньший amount, т.к. секция высокая
-            >
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center mb-8 md:mb-12">
-                        <h2 className="text-2xl md:text-3xl font-bold">Новые объявления</h2>
-                        <Link
-                            href="/properties"
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                        >
-                            Смотреть все
-                        </Link>
-                    </div>
-
-                    {loading ? (
-                        <div className="text-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        </div>
-                    ) : error ? (
-                        <div className="text-center py-12 text-red-600">
-                            <p>{error}</p>
-                        </div>
-                    ) : properties.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <p>Пока нет доступных объявлений.</p>
-                        </div>
-                    ) : (
-                        <> {/* Обертка для grid и pagination */} 
-                            <motion.div
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-                                // Убираем stagger с grid, т.к. анимируется вся секция
-                                initial="hidden" // Можно оставить для карточек, если хочется двойной анимации
-                                animate="show"
-                                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
-                            >
-                                {properties.map((property, index) => (
-                                    <motion.div
-                                        key={property.id}
-                                        variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} 
-                                        className="group"
-                                    >
-                                        <Link href={`/properties/${property.id}`}>
-                                            <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl h-full flex flex-col">
-                                                <div className="relative h-[200px] flex-shrink-0">
-                                                    <Image
-                                                        src={property.images?.[0]?.image_url 
-                                                             ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
-                                                             : "/no-image.jpg"} 
-                                                        alt={property.title}
-                                                        fill
-                                                        style={{ objectFit: 'cover' }}
-                                                        className="transition-transform duration-300 group-hover:scale-105"
-                                                        onError={(e) => { 
-                                                            const target = e.currentTarget;
-                                                            target.srcset = '';
-                                                            target.src = '/no-image.jpg'; 
-                                                        }}
-                                                    />
-                                                    {property.is_viewed && property.owner_id !== currentUserId && (
-                                                        <div className="absolute top-4 left-4 bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-xs flex items-center gap-1 z-10">
-                                                            <FaCheck className="w-2.5 h-2.5" />
-                                                            Просмотрено
-                                                        </div>
-                                                    )}
-                                                    <button
-                                                        onClick={(e) => toggleFavorite(e, property.id)}
-                                                        className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${ 
-                                                            favorites.has(property.id)
-                                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                            : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                                        } shadow-lg z-10`}
-                                                        aria-label={favorites.has(property.id) ? "Удалить из избранного" : "Добавить в избранное"}
-                                                    >
-                                                        <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
-                                                    </button>
-                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                                                        <p className="text-white text-xl font-bold">
-                                                            {formatPrice(property.price)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-4 flex-grow flex flex-col">
-                                                    <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1 flex-shrink-0">{property.title}</h3>
-                                                    <div className="flex items-center text-gray-600 mb-3 flex-shrink-0">
-                                                        <FaMapMarkerAlt className="mr-1.5 w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
-                                                        <p className="text-sm line-clamp-1">{property.address}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-gray-600 mb-2 flex-shrink-0">
-                                                        <div className="flex items-center gap-1 text-sm">
-                                                            <FaBed className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-gray-400" />
-                                                            <span>{property.rooms?.toLowerCase() === 'студия' ? 'Студия' : `${property.rooms} комнат`}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 text-sm">
-                                                            <FaRulerCombined className="w-3.5 h-3.5 mr-1 flex-shrink-0 text-gray-400" />
-                                                            Площадь: {property.area} м²
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-auto pt-2 flex items-center text-xs text-gray-500 flex-shrink-0">
-                                                        <FaRegCalendarAlt className="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-gray-400" />
-                                                        <span>Создано: {formatDateLocal(property.created_at)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-
-                            {/* Пагинация - Условие использует totalPages */}
-                            {!loading && totalPages > 1 && (
-                                <div className="mt-12 flex justify-center space-x-2">
-                                     {[...Array(totalPages).keys()].map((page) => (
-                                        <button
-                                            key={page + 1}
-                                            // onClick={() => fetchProperties(page + 1, filters)} // Ошибка была не здесь
-                                            // ... rest of button ...
-                                        >
-                                            {page + 1}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </motion.section>
-
             {/* CTA секция - добавляем анимацию */}
             <motion.section 
                 className="bg-blue-50 py-16"
@@ -712,6 +640,6 @@ export default function HomePage() {
             >
                 <Footer /> 
             </motion.div>
-        </div>
+        </main>
     );
 }

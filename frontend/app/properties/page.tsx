@@ -321,7 +321,7 @@ export default function PropertiesPage() {
                     <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
                     <div className="flex items-center text-gray-600 mb-3">
                       <FaMapMarkerAlt className="mr-1 w-3 h-3" />
-                      <p className="text-sm line-clamp-1">{property.address}</p>
+                      <p className="text-sm truncate">{property.address}</p>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600 mb-2">
                       <div className="flex items-center gap-1">

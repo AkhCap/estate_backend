@@ -43,33 +43,35 @@ const Navigation = () => {
     ];
 
     return (
-        <header className="fixed w-full top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
-            <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <header className="fixed w-full top-0 z-50">
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-md border-b border-gray-100" />
+            <nav className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
-                    {/* Левая часть: Логотип и меню */}
-                    <div className="flex items-center space-x-8">
+                    {/* Левая часть: Логотип */}
+                    <div className="flex items-center">
                         <Link href="/" className="flex items-center">
-                            <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-                                Estate
+                            <span className="text-2xl font-bold text-gray-900">
+                                MANZIL.tj
                             </span>
                         </Link>
+                    </div>
 
-                        <div className="flex items-center space-x-1">
-                            {menuItems.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                        pathname === item.href
-                                            ? 'text-emerald-600 bg-emerald-50'
-                                            : 'text-gray-600 hover:text-emerald-600 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <item.icon className="w-4 h-4 mr-2" />
-                                    {item.label}
-                                </Link>
-                            ))}
-                        </div>
+                    {/* Центральная часть: Вертикальное меню */}
+                    <div className="hidden md:flex items-center space-y-0">
+                        {menuItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                                    pathname === item.href
+                                        ? 'text-gray-900 border-b-2 border-gray-900'
+                                        : 'text-gray-600 hover:text-gray-900 hover:border-b-2 hover:border-gray-300'
+                                }`}
+                            >
+                                <item.icon className="w-4 h-4 mr-2" />
+                                {item.label}
+                            </Link>
+                        ))}
                     </div>
 
                     {/* Правая часть */}
@@ -78,15 +80,18 @@ const Navigation = () => {
                             <>
                                 <Link
                                     href="/create-property"
-                                    className="px-4 py-2 rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium hover:shadow-lg transition-all duration-200"
+                                    className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all duration-200"
                                 >
-                                    Разместить объявление
+                                    <span className="flex items-center">
+                                        <FaBuilding className="w-4 h-4 mr-2" />
+                                        Разместить объявление
+                                    </span>
                                 </Link>
                                 
                                 <Link href="/chat/new" className="relative p-2">
-                                    <MessageSquare className="w-6 h-6 text-gray-600 hover:text-emerald-600 transition-colors" />
+                                    <MessageSquare className="w-6 h-6 text-gray-600 hover:text-gray-900 transition-colors" />
                                     {unreadChatCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 text-white text-xs flex items-center justify-center rounded-full">
                                             {unreadChatCount}
                                         </span>
                                     )}
@@ -95,9 +100,11 @@ const Navigation = () => {
                                 <div className="relative" ref={menuRef}>
                                     <button
                                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                        className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-50 transition-colors"
+                                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 transition-colors"
                                     >
-                                        <FaUserCircle className="w-6 h-6 text-gray-600" />
+                                        <div className="relative w-8 h-8 overflow-hidden bg-gray-100">
+                                            <FaUserCircle className="w-full h-full text-gray-600" />
+                                        </div>
                                     </button>
 
                                     <AnimatePresence>
@@ -106,7 +113,7 @@ const Navigation = () => {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
-                                                className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-gray-100"
+                                                className="absolute right-0 mt-2 w-48 bg-white shadow-lg py-2 border border-gray-100"
                                             >
                                                 <Link
                                                     href="/profile"
@@ -137,13 +144,13 @@ const Navigation = () => {
                             <>
                                 <Link
                                     href="/login"
-                                    className="px-4 py-2 text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
                                 >
                                     Войти
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className="px-4 py-2 rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium hover:shadow-lg transition-all duration-200"
+                                    className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all duration-200"
                                 >
                                     Регистрация
                                 </Link>
@@ -153,7 +160,7 @@ const Navigation = () => {
 
                     {/* Мобильное меню */}
                     <button
-                        className="md:hidden p-2 rounded-lg hover:bg-gray-50"
+                        className="md:hidden p-2 hover:bg-gray-50"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         <svg
@@ -195,10 +202,10 @@ const Navigation = () => {
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+                                        className={`flex items-center px-3 py-2 text-sm font-medium ${
                                             pathname === item.href
-                                                ? 'text-emerald-600 bg-emerald-50'
-                                                : 'text-gray-600 hover:text-emerald-600 hover:bg-gray-50'
+                                                ? 'text-gray-900 border-l-2 border-gray-900'
+                                                : 'text-gray-600 hover:text-gray-900 hover:border-l-2 hover:border-gray-300'
                                         }`}
                                         onClick={() => setIsMenuOpen(false)}
                                     >
@@ -211,7 +218,7 @@ const Navigation = () => {
                                     <>
                                         <Link
                                             href="/create-property"
-                                            className="block w-full px-3 py-2 text-center rounded-lg bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium"
+                                            className="block w-full px-3 py-2 text-center bg-gray-900 text-white font-medium"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Разместить объявление
@@ -219,14 +226,14 @@ const Navigation = () => {
                                         <div className="pt-4 border-t border-gray-100">
                                             <Link
                                                 href="/profile"
-                                                className="block px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-emerald-600 hover:bg-gray-50"
+                                                className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                                 onClick={() => setIsMenuOpen(false)}
                                             >
                                                 Мой профиль
                                             </Link>
                                             <button
                                                 onClick={handleLogout}
-                                                className="block w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
+                                                className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                                             >
                                                 Выйти
                                             </button>
@@ -236,14 +243,14 @@ const Navigation = () => {
                                     <div className="pt-4 space-y-2">
                                         <Link
                                             href="/login"
-                                            className="block px-3 py-2 text-center rounded-lg text-gray-600 hover:text-emerald-600 font-medium"
+                                            className="block px-3 py-2 text-center text-gray-600 hover:text-gray-900 font-medium"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Войти
                                         </Link>
                                         <Link
                                             href="/register"
-                                            className="block px-3 py-2 text-center rounded-lg bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-medium"
+                                            className="block px-3 py-2 text-center bg-gray-900 text-white font-medium"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Регистрация

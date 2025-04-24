@@ -522,7 +522,7 @@ const PropertyDetailPage: React.FC = () => {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center text-gray-600">
                       <FaMapMarkerAlt className="mr-2" />
-                      <p>{property?.address}</p>
+                      <p className="truncate">{property?.address}</p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <FaRegCalendarAlt className="mr-1" />
