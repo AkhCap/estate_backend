@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { FaMapMarkerAlt, FaFilter } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const SearchHero = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     return (
-        <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50">
+        <motion.div 
+            className="relative bg-white"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+        >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
@@ -63,7 +70,7 @@ const SearchHero = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 

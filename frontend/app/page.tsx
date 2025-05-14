@@ -369,106 +369,85 @@ export default function HomePage() {
             
             {/* Новая секция со статистикой */}
             <motion.section 
-                className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50"
-                variants={sectionVariants}
-                initial="hidden"
-                whileInView="visible"
+                className="py-12 bg-white"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Статистика */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
-                        <motion.div 
-                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-4xl font-bold mb-2 text-blue-600">5,000+</div>
-                            <div className="text-gray-600">Объектов</div>
-                        </motion.div>
-                        <motion.div 
-                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-4xl font-bold mb-2 text-blue-600">1,200+</div>
-                            <div className="text-gray-600">Клиентов</div>
-                        </motion.div>
-                        <motion.div 
-                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-4xl font-bold mb-2 text-blue-600">500+</div>
-                            <div className="text-gray-600">Агентов</div>
-                        </motion.div>
-                        <motion.div 
-                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-4xl font-bold mb-2 text-blue-600">98%</div>
-                            <div className="text-gray-600">Довольных клиентов</div>
-                        </motion.div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                        {[
+                            { number: "5,000+", label: "Объектов" },
+                            { number: "1,200+", label: "Клиентов" },
+                            { number: "500+", label: "Агентов" },
+                            { number: "98%", label: "Довольных клиентов" }
+                        ].map((stat, index) => (
+                            <motion.div 
+                                key={stat.label}
+                                className="text-center bg-white p-6 rounded-2xl shadow-sm"
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                                whileHover={{ scale: 1.05 }}
+                            >
+                                <div className="text-4xl font-bold mb-2 text-blue-600">{stat.number}</div>
+                                <div className="text-gray-600">{stat.label}</div>
+                            </motion.div>
+                        ))}
                     </div>
 
                     {/* Преимущества */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <motion.div 
-                            className="bg-white rounded-2xl p-8 shadow-sm"
-                            whileHover={{ y: -5 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Search className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Умный поиск</h3>
-                            <p className="text-gray-600">
-                                Используйте расширенные фильтры для поиска идеального варианта. Находите объекты по районам, цене, площади и другим параметрам.
-                            </p>
-                        </motion.div>
-
-                        <motion.div 
-                            className="bg-white rounded-2xl p-8 shadow-sm"
-                            whileHover={{ y: -5 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Users className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Проверенные агенты</h3>
-                            <p className="text-gray-600">
-                                Работайте только с проверенными специалистами. Все агенты проходят тщательную проверку и имеют подтвержденный рейтинг.
-                            </p>
-                        </motion.div>
-
-                        <motion.div 
-                            className="bg-white rounded-2xl p-8 shadow-sm"
-                            whileHover={{ y: -5 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <CheckCircle className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Гарантия качества</h3>
-                            <p className="text-gray-600">
-                                Мы проверяем каждое объявление на достоверность информации и соответствие заявленным характеристикам.
-                            </p>
-                        </motion.div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            {
+                                icon: Search,
+                                title: "Умный поиск",
+                                description: "Используйте расширенные фильтры для поиска идеального варианта. Находите объекты по районам, цене, площади и другим параметрам."
+                            },
+                            {
+                                icon: Users,
+                                title: "Проверенные агенты",
+                                description: "Работайте только с проверенными специалистами. Все агенты проходят тщательную проверку и имеют подтвержденный рейтинг."
+                            },
+                            {
+                                icon: CheckCircle,
+                                title: "Гарантия качества",
+                                description: "Мы проверяем каждое объявление на достоверность информации и соответствие заявленным характеристикам."
+                            }
+                        ].map((feature, index) => (
+                            <motion.div 
+                                key={feature.title}
+                                className="bg-white rounded-2xl p-8 shadow-sm"
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                                whileHover={{ y: -5 }}
+                            >
+                                <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                    <feature.icon className="w-6 h-6 text-blue-600" />
+                                </div>
+                                <h3 className="text-xl font-semibold mb-4 text-gray-900">{feature.title}</h3>
+                                <p className="text-gray-600">{feature.description}</p>
+                            </motion.div>
+                        ))}
                     </div>
                 </div>
             </motion.section>
 
             {/* Секция объявлений */}
             <motion.section 
-                className="py-16 bg-gray-50" 
-                variants={sectionVariants}
-                initial="hidden"
-                whileInView="visible"
+                className="py-12 bg-gray-50" 
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center mb-8 md:mb-12">
+                    <div className="flex justify-between items-center mb-6 md:mb-8">
                         <h2 className="text-2xl md:text-3xl font-bold">Новые объявления</h2>
                         <Link
                             href="/properties"
@@ -604,15 +583,15 @@ export default function HomePage() {
 
             {/* Отзывы клиентов */}
             <motion.section
-                className="py-16 bg-white"
-                variants={sectionVariants}
-                initial="hidden"
-                whileInView="visible"
+                className="py-12 bg-white"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Что говорят наши клиенты</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">Что говорят наши клиенты</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Отзыв 1 */}
                         <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 flex flex-col">
                             <Quote className="w-8 h-8 text-blue-500 mb-4 flex-shrink-0" aria-hidden="true" />
@@ -644,27 +623,47 @@ export default function HomePage() {
                 </div>
             </motion.section>
 
-            {/* CTA секция - добавляем анимацию */}
+            {/* CTA секция */}
             <motion.section 
-                className="bg-blue-50 py-16"
-                variants={sectionVariants}
-                initial="hidden"
-                whileInView="visible"
+                className="bg-white py-8"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                       {/* ... код CTA блоков ... */} 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Готовы начать?</h2>
+                            <p className="text-lg text-gray-600 mb-6">
+                                Присоединяйтесь к тысячам довольных клиентов, которые уже нашли свой идеальный дом через наш сервис.
+                            </p>
+                            <Link
+                                href="/create-property"
+                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                            >
+                                Разместить объявление
+                            </Link>
+                        </div>
+                        <div className="relative h-64 md:h-80 flex items-center justify-center bg-white">
+                            <Image
+                                src="/illustrations/undraw_house-searching_g2b8.svg"
+                                alt="Готовы начать"
+                                fill
+                                className="object-contain p-6"
+                                style={{ objectPosition: 'center' }}
+                            />
+                        </div>
                     </div>
                 </div>
             </motion.section>
 
-            {/* Footer - можно тоже добавить анимацию */}
+            {/* Footer */}
             <motion.div
-                variants={sectionVariants} // Используем те же варианты
-                initial="hidden"
-                whileInView="visible"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
             >
                 <Footer /> 
             </motion.div>

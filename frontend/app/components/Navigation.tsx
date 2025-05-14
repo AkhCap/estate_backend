@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, MessageSquare, Plus } from 'lucide-react';
-import { FaHome, FaBuilding, FaMapMarkedAlt, FaHandshake, FaInfoCircle, FaPhone, FaUserCircle } from 'react-icons/fa';
+import { LogOut, MessageSquare, Plus, User } from 'lucide-react';
+import { FaHome, FaBuilding, FaMapMarkedAlt, FaHandshake, FaInfoCircle, FaPhone } from 'react-icons/fa';
 import { useAuth } from "@/app/context/AuthContext";
 import chatAxiosInstance from "../../lib/chatAxios";
 
@@ -100,10 +100,10 @@ const Navigation = () => {
                                 <div className="relative" ref={menuRef}>
                                     <button
                                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 transition-colors"
+                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 transition-all duration-200"
                                     >
-                                        <div className="relative w-8 h-8 overflow-hidden bg-gray-100">
-                                            <FaUserCircle className="w-full h-full text-gray-600" />
+                                        <div className="relative w-6 h-6">
+                                            <User className="w-full h-full text-gray-600" strokeWidth={1.5} />
                                         </div>
                                     </button>
 
@@ -113,19 +113,21 @@ const Navigation = () => {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
-                                                className="absolute right-0 mt-2 w-48 bg-white shadow-lg py-2 border border-gray-100"
+                                                className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-gray-100"
                                             >
                                                 <Link
                                                     href="/profile"
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                                     onClick={() => setIsMenuOpen(false)}
                                                 >
+                                                    <User className="w-5 h-5 mr-2 text-gray-500" strokeWidth={1.5} />
                                                     Мой профиль
                                                 </Link>
                                                 <button
                                                     onClick={handleLogout}
-                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                    className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                                                 >
+                                                    <LogOut className="w-5 h-5 mr-2" strokeWidth={1.5} />
                                                     Выйти
                                                 </button>
                                             </motion.div>

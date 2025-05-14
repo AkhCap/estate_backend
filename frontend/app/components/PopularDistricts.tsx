@@ -31,16 +31,31 @@ const districts = [
 
 export default function PopularDistricts() {
     return (
-        <section className="py-16 bg-gray-50">
+        <motion.section 
+            className="py-16 bg-white"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+        >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-8">Популярные районы</h2>
+                <motion.h2 
+                    className="text-3xl font-bold text-gray-900 mb-8"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+                >
+                    Популярные районы
+                </motion.h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {districts.map((district, index) => (
                         <motion.div
                             key={district.name}
                             initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
                             className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
                         >
                             <div className="relative h-48">
@@ -64,6 +79,6 @@ export default function PopularDistricts() {
                     ))}
                 </div>
             </div>
-        </section>
+        </motion.section>
     );
 } 

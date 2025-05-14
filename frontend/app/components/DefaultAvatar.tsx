@@ -1,4 +1,4 @@
-import { FaUser } from 'react-icons/fa';
+import { User } from 'lucide-react';
 
 interface DefaultAvatarProps {
   firstName?: string | null;
@@ -16,17 +16,16 @@ export default function DefaultAvatar({ firstName, lastName, size = 96, classNam
     } else if (lastName) {
       return lastName[0].toUpperCase();
     }
-    return <FaUser className="w-1/3 h-1/3 text-gray-400" />;
+    return <User className="w-1/2 h-1/2 text-gray-600" strokeWidth={1.5} />;
   };
 
   return (
     <div 
-      className={`flex items-center justify-center bg-gray-100 text-gray-600 font-medium ${className}`}
+      className={`flex items-center justify-center rounded-full bg-gray-50 ${className}`}
       style={{ 
         width: size, 
         height: size,
-        fontSize: `${size * 0.4}px`,
-        letterSpacing: '0.05em'
+        fontSize: `${size * 0.4}px`
       }}
     >
       {getInitials()}
