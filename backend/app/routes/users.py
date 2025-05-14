@@ -137,6 +137,34 @@ def upload_avatar(
     
     return schemas.UserOut.model_validate(user)
 
+@router.delete("/me/avatar", response_model=schemas.UserOut)
+def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(auth.get_current_user)
+):
+    user = crud.get_user_by_email(db, email=current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    if user.avatar_url:
+        # Получаем имя файла из URL
+        filename = user.avatar_url.split('/')[-1]
+        file_path = os.path.join("uploads/avatars", filename)
+        
+        # Удаляем файл, если он существует
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Ошибка при удалении файла: {e}")
+        
+        # Очищаем URL аватара в базе данных
+        user.avatar_url = None
+        db.commit()
+        db.refresh(user)
+    
+    return schemas.UserOut.model_validate(user)
+
 # --- Получение объявлений текущего пользователя ---
 
 @router.get("/me/properties", response_model=List[schemas.PropertyOut])

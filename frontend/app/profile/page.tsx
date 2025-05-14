@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import axios from "../../lib/axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, type User } from "@/app/context/AuthContext";
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaHistory, FaHeart, FaHome } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaHistory, FaHeart, FaHome, FaTrash } from 'react-icons/fa';
 import Image from 'next/image';
 import DefaultAvatar from '../components/DefaultAvatar';
 
@@ -32,6 +32,7 @@ export default function ProfilePage() {
     avatar_url: null
   });
   const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -124,7 +125,12 @@ export default function ProfilePage() {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setAvatar(e.target.files[0]);
+      const file = e.target.files[0];
+      setAvatar(file);
+      
+      // Создаем URL для предпросмотра
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
     }
   };
 
@@ -160,6 +166,7 @@ export default function ProfilePage() {
       setSuccess("Профиль успешно обновлен");
       setIsEditing(false);
       setAvatar(null);
+      setAvatarPreview(null); // Очищаем предпросмотр
     } catch (err: any) {
       const errorMessage = err.response?.data 
         ? formatErrorMessage(err.response.data)
@@ -170,6 +177,15 @@ export default function ProfilePage() {
     }
   };
 
+  // Очищаем URL предпросмотра при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -179,20 +195,34 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 pb-10">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pt-20 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Профиль */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Верхняя часть с фоном */}
-          <div className="h-32 bg-gradient-to-r from-emerald-600 to-blue-600"></div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="bg-white rounded-3xl shadow-sm overflow-hidden"
+        >
+          {/* Верхняя часть с градиентом */}
+          <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
           
           {/* Основная информация */}
           <div className="relative px-6 pb-6">
             {/* Аватар */}
-            <div className="absolute -top-12 left-6">
-              <div className="w-24 h-24 rounded-full bg-white p-1">
+            <div className="absolute -top-12 left-6 flex items-center gap-4">
+              <div className="w-24 h-24 rounded-full bg-white p-1 shadow-sm">
                 <div className="relative w-full h-full rounded-full overflow-hidden">
-                  {formData.avatar_url ? (
+                  {avatarPreview ? (
+                    <Image
+                      src={avatarPreview}
+                      alt="Profile Preview"
+                      width={96}
+                      height={96}
+                      priority
+                      className="object-cover w-full h-full"
+                    />
+                  ) : formData.avatar_url ? (
                     <Image
                       src={formData.avatar_url}
                       alt="Profile"
@@ -209,25 +239,46 @@ export default function ProfilePage() {
                       className="rounded-full"
                     />
                   )}
-                  {isEditing && (
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer transition-opacity hover:bg-black/70">
-                      <span className="text-white text-sm">Изменить</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                      />
-                    </label>
-                  )}
                 </div>
               </div>
+              {isEditing && (
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+                    <FaEdit className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-600">Изменить</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                    />
+                  </label>
+                  {formData.avatar_url && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await axios.delete("/users/me/avatar");
+                          setFormData(prev => ({ ...prev, avatar_url: null }));
+                          setSuccess("Аватар успешно удален");
+                        } catch (err) {
+                          setError("Ошибка при удалении аватара");
+                          console.error('Ошибка удаления аватара:', err);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    >
+                      <FaTrash className="w-4 h-4 text-red-600" />
+                      <span className="text-sm text-red-600">Удалить</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Кнопка редактирования */}
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="absolute top-4 right-6 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:text-emerald-600 font-medium transition-all duration-200 flex items-center space-x-2"
+              className="absolute top-4 right-6 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-2"
             >
               <FaEdit className="w-4 h-4" />
               <span>{isEditing ? 'Отмена' : 'Редактировать'}</span>
@@ -246,7 +297,7 @@ export default function ProfilePage() {
                     value={formData.first_name || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
                 <div>
@@ -259,7 +310,7 @@ export default function ProfilePage() {
                     value={formData.last_name || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
                 <div>
@@ -272,7 +323,7 @@ export default function ProfilePage() {
                     value={formData.email || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
                 <div>
@@ -285,7 +336,7 @@ export default function ProfilePage() {
                     value={formData.phone || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
               </div>
@@ -294,7 +345,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end space-x-4 pt-4">
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
                   >
                     Сохранить
                   </button>
@@ -302,79 +353,66 @@ export default function ProfilePage() {
               )}
             </form>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Статистика и быстрые действия */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Управление недвижимостью</h2>
-          <div className="grid grid-cols-1 gap-4">
-            <Link
-              href="/profile/properties"
-              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <FaHome className="w-6 h-6 text-emerald-600" />
+        {/* Быстрые действия */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          className="mt-8"
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление недвижимостью</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {profileLinks.map((link, index) => (
+              <motion.div
+                key={link.href}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                whileHover={{ y: -5 }}
+              >
+                <Link
+                  href={link.href}
+                  className="block bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <link.icon className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">{link.label}</h3>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Мои объявления</h3>
-                    <p className="text-sm text-gray-500">Управляйте своими объявлениями о недвижимости</p>
-                  </div>
-                </div>
-                <div className="text-emerald-600">→</div>
-              </div>
-            </Link>
-
-            <Link
-              href="/profile/favorites"
-              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <FaHeart className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Избранное</h3>
-                    <p className="text-sm text-gray-500">Сохраненные объявления и интересные предложения</p>
-                  </div>
-                </div>
-                <div className="text-emerald-600">→</div>
-              </div>
-            </Link>
-
-            <Link
-              href="/profile/history"
-              className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <FaHistory className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">История просмотров</h3>
-                    <p className="text-sm text-gray-500">Недавно просмотренные объявления</p>
-                  </div>
-                </div>
-                <div className="text-emerald-600">→</div>
-              </div>
-            </Link>
+                </Link>
+              </motion.div>
+            ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Сообщения об ошибках и успехе */}
-        {error && (
-          <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mt-6 p-4 bg-emerald-50 text-emerald-600 rounded-xl">
-            {success}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl"
+            >
+              {error}
+            </motion.div>
+          )}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mt-6 p-4 bg-emerald-50 text-emerald-600 rounded-xl"
+            >
+              {success}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
