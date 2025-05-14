@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, MessageSquare } from 'lucide-react';
+import { LogOut, MessageSquare, Plus } from 'lucide-react';
 import { FaHome, FaBuilding, FaMapMarkedAlt, FaHandshake, FaInfoCircle, FaPhone, FaUserCircle } from 'react-icons/fa';
 import { useAuth } from "@/app/context/AuthContext";
 import chatAxiosInstance from "../../lib/chatAxios";
@@ -43,7 +43,7 @@ const Navigation = () => {
     ];
 
     return (
-        <header className="fixed w-full top-0 z-50">
+        <header className="sticky top-0 z-50">
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md border-b border-gray-100" />
             <nav className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
@@ -51,7 +51,7 @@ const Navigation = () => {
                     <div className="flex items-center">
                         <Link href="/" className="flex items-center">
                             <span className="text-2xl font-bold text-gray-900">
-                                MANZIL.tj
+                                ESTATE.TJ
                             </span>
                         </Link>
                     </div>
@@ -80,11 +80,11 @@ const Navigation = () => {
                             <>
                                 <Link
                                     href="/create-property"
-                                    className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all duration-200"
+                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
                                 >
                                     <span className="flex items-center">
-                                        <FaBuilding className="w-4 h-4 mr-2" />
-                                        Разместить объявление
+                                        <Plus className="w-4 h-4 mr-1.5" />
+                                        Разместить
                                     </span>
                                 </Link>
                                 
@@ -122,13 +122,6 @@ const Navigation = () => {
                                                 >
                                                     Мой профиль
                                                 </Link>
-                                                <Link
-                                                    href="/properties/my"
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                    onClick={() => setIsMenuOpen(false)}
-                                                >
-                                                    Мои объявления
-                                                </Link>
                                                 <button
                                                     onClick={handleLogout}
                                                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -144,13 +137,13 @@ const Navigation = () => {
                             <>
                                 <Link
                                     href="/login"
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                                    className="px-3 py-1.5 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
                                 >
                                     Войти
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all duration-200"
+                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
                                 >
                                     Регистрация
                                 </Link>
@@ -218,10 +211,13 @@ const Navigation = () => {
                                     <>
                                         <Link
                                             href="/create-property"
-                                            className="block w-full px-3 py-2 text-center bg-gray-900 text-white font-medium"
+                                            className="block w-full px-3 py-1.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
-                                            Разместить объявление
+                                            <span className="flex items-center justify-center">
+                                                <Plus className="w-4 h-4 mr-1.5" />
+                                                Разместить
+                                            </span>
                                         </Link>
                                         <div className="pt-4 border-t border-gray-100">
                                             <Link
@@ -243,14 +239,14 @@ const Navigation = () => {
                                     <div className="pt-4 space-y-2">
                                         <Link
                                             href="/login"
-                                            className="block px-3 py-2 text-center text-gray-600 hover:text-gray-900 font-medium"
+                                            className="block px-3 py-1.5 text-center text-gray-600 hover:text-gray-900 text-sm font-medium"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Войти
                                         </Link>
                                         <Link
                                             href="/register"
-                                            className="block px-3 py-2 text-center bg-gray-900 text-white font-medium"
+                                            className="block px-3 py-1.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Регистрация
