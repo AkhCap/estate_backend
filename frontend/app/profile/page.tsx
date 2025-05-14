@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useAuth, type User } from "@/app/context/AuthContext";
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaHistory, FaHeart, FaHome } from 'react-icons/fa';
 import Image from 'next/image';
+import DefaultAvatar from '../components/DefaultAvatar';
 
 interface UserProfile {
   id: number;
@@ -23,7 +24,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [formData, setFormData] = useState<Partial<UserProfile>>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    avatar_url: null
+  });
   const [avatar, setAvatar] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -112,7 +119,7 @@ export default function ProfilePage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value || "" }));
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,7 +191,7 @@ export default function ProfilePage() {
             {/* Аватар */}
             <div className="absolute -top-12 left-6">
               <div className="w-24 h-24 rounded-full bg-white p-1">
-                <div className="relative w-full h-full rounded-full bg-gradient-to-r from-emerald-600 to-blue-600 flex items-center justify-center text-white overflow-hidden">
+                <div className="relative w-full h-full rounded-full overflow-hidden">
                   {formData.avatar_url ? (
                     <Image
                       src={formData.avatar_url}
@@ -195,7 +202,12 @@ export default function ProfilePage() {
                       className="object-cover w-full h-full"
                     />
                   ) : (
-                    <FaUser className="w-12 h-12" />
+                    <DefaultAvatar
+                      firstName={formData.first_name}
+                      lastName={formData.last_name}
+                      size={96}
+                      className="rounded-full"
+                    />
                   )}
                   {isEditing && (
                     <label className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer transition-opacity hover:bg-black/70">
@@ -231,7 +243,7 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     name="first_name"
-                    value={formData.first_name}
+                    value={formData.first_name || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
@@ -244,7 +256,7 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     name="last_name"
-                    value={formData.last_name}
+                    value={formData.last_name || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
@@ -257,7 +269,7 @@ export default function ProfilePage() {
                   <input
                     type="email"
                     name="email"
-                    value={formData.email}
+                    value={formData.email || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
@@ -270,7 +282,7 @@ export default function ProfilePage() {
                   <input
                     type="tel"
                     name="phone"
-                    value={formData.phone}
+                    value={formData.phone || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"

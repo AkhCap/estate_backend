@@ -31,46 +31,35 @@ const districts = [
 
 export default function PopularDistricts() {
     return (
-        <section className="py-16 bg-white">
+        <section className="py-16 bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900">Районы Душанбе</h2>
-                    <p className="mt-4 text-lg text-gray-600">Исследуйте все районы столицы и найдите свой идеальный дом</p>
-                </div>
-                
-                <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <h2 className="text-3xl font-bold text-gray-900 mb-8">Популярные районы</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {districts.map((district, index) => (
                         <motion.div
                             key={district.name}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.2 }}
-                            className="group relative overflow-hidden rounded-2xl shadow-lg"
-                            whileHover={{ 
-                                scale: 1.03,
-                                transition: { duration: 0.2 }
-                            }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
                         >
-                            <Link href={`/search?district=${encodeURIComponent(district.name)}`}>
-                                <div className="relative h-72 w-full">
-                                    <Image
-                                        src={district.image}
-                                        alt={district.name}
-                                        fill
-                                        className="object-cover transition-transform duration-300 hover:scale-110"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                                    <div className="absolute bottom-4 left-4 text-white">
-                                        <h3 className="text-xl font-semibold">{district.name}</h3>
-                                        <p className="text-sm opacity-90 mt-1">{district.description}</p>
-                                        <p className="text-sm mt-2 font-medium">
-                                            <span className="bg-white/20 px-2 py-1 rounded-full">
-                                                {district.properties} объектов
-                                            </span>
-                                        </p>
-                                    </div>
+                            <div className="relative h-48">
+                                <Image
+                                    src={district.image}
+                                    alt={district.name}
+                                    fill
+                                    priority={index === 0}
+                                    className="object-cover"
+                                />
+                            </div>
+                            <div className="p-4">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-2">{district.name}</h3>
+                                <p className="text-gray-600 mb-3">{district.description}</p>
+                                <div className="flex items-center text-emerald-600">
+                                    <span className="font-medium">{district.properties}</span>
+                                    <span className="ml-2 text-sm">объектов</span>
                                 </div>
-                            </Link>
+                            </div>
                         </motion.div>
                     ))}
                 </div>

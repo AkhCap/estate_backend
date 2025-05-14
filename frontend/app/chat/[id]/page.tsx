@@ -131,16 +131,18 @@ const ChatPage = ({ params }: PageProps) => {
   useEffect(() => {
     // Запоминаем текущий стиль overflow
     const originalOverflow = document.body.style.overflow;
-    // Отключаем прокрутку body
-    document.body.style.overflow = 'hidden';
-    console.log("[ChatPage Effect] Body overflow set to hidden.");
+    // Отключаем прокрутку body только если открыт чат
+    if (currentChat) {
+      document.body.style.overflow = 'hidden';
+      console.log("[ChatPage Effect] Body overflow set to hidden.");
+    }
 
     // Функция очистки для восстановления overflow при размонтировании
     return () => {
       document.body.style.overflow = originalOverflow;
       console.log("[ChatPage Effect] Body overflow restored to:", originalOverflow || 'auto');
     };
-  }, []); // Пустой массив зависимостей, чтобы выполнилось только при монтировании/размонтировании
+  }, [currentChat]); // Добавляем currentChat в зависимости
 
   useEffect(() => {
     const fetchChatData = async () => {
@@ -456,7 +458,7 @@ const ChatPage = ({ params }: PageProps) => {
   const headerImageUrl = getFirstImageUrl(propertyInfo);
 
   return (
-    <div className="fixed inset-0 pt-[64px] bg-[#f8fafc]">
+    <div className="h-[calc(100vh-64px)] bg-[#f8fafc]">
       <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-full bg-white/60 backdrop-blur-sm rounded-2xl shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-100">
           {/* Левая колонка со списком чатов */}

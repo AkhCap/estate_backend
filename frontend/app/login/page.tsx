@@ -66,7 +66,11 @@ export default function LoginPage() {
         // Показываем конкретную ошибку от сервера
         const errorDetail = err.response.data.detail;
         if (errorDetail === "Пользователь с таким email не найден") {
-          setError("Пользователь с таким email не найден");
+          setError("Пользователь с таким email не найден. Пожалуйста, зарегистрируйтесь.");
+          // Добавляем задержку перед перенаправлением
+          setTimeout(() => {
+            router.push("/register");
+          }, 2000);
         } else if (errorDetail === "Неверный пароль") {
           setError("Неверный пароль");
         } else {

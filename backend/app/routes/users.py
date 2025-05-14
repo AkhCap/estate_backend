@@ -56,7 +56,7 @@ async def login(
         print(f"Пользователь с email {form_data.username} не найден")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Пользователь с таким email не найден",
+            detail="Пользователь с таким email не найден. Пожалуйста, зарегистрируйтесь.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

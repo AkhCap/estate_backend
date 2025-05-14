@@ -16,6 +16,7 @@ import chatAxiosInstance from "@/lib/chatAxios";
 import { ShareButton } from '@/app/components/ui/ShareButton';
 import { ReportButton } from '@/app/components/ui/ReportButton';
 import { Button } from '@/components/ui/button';
+import DefaultAvatar from "@/app/components/DefaultAvatar";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -1088,20 +1089,26 @@ const PropertyDetailPage: React.FC = () => {
                 <div className="border-t border-gray-100 pt-6">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={(() => {
-                          const avatarUrl = property?.owner?.avatar_url;
-                          if (!avatarUrl) return "/images/placeholder.png";
-                          if (avatarUrl.startsWith('http')) return avatarUrl;
-                          return `/uploads/avatars/${avatarUrl}`;
-                        })()}
-                        alt={property?.owner?.first_name}
-                        className="w-24 h-24 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/images/placeholder.png";
-                        }}
-                      />
+                      {property?.owner?.avatar_url ? (
+                        <img 
+                          src={property.owner.avatar_url.startsWith('http') 
+                            ? property.owner.avatar_url 
+                            : `/uploads/avatars/${property.owner.avatar_url}`}
+                          alt={property.owner.first_name}
+                          className="w-24 h-24 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <DefaultAvatar
+                          firstName={property?.owner?.first_name || ''}
+                          lastName={property?.owner?.last_name || ''}
+                          size={96}
+                          className="w-24 h-24"
+                        />
+                      )}
                     </div>
                     <div className="text-center">
                       <h3 className="text-lg font-semibold text-gray-900">

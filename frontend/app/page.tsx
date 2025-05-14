@@ -369,7 +369,7 @@ export default function HomePage() {
             
             {/* Новая секция со статистикой */}
             <motion.section 
-                className="py-16 bg-gradient-to-br from-[#19376D] to-[#19376D]/90 text-white"
+                className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50"
                 variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
@@ -378,55 +378,83 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Статистика */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
-                        <div className="text-center">
-                            <div className="text-4xl font-bold mb-2">5,000+</div>
-                            <div className="text-gray-300">Объектов</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-4xl font-bold mb-2">1,200+</div>
-                            <div className="text-gray-300">Клиентов</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-4xl font-bold mb-2">500+</div>
-                            <div className="text-gray-300">Агентов</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-4xl font-bold mb-2">98%</div>
-                            <div className="text-gray-300">Довольных клиентов</div>
-                        </div>
+                        <motion.div 
+                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="text-4xl font-bold mb-2 text-blue-600">5,000+</div>
+                            <div className="text-gray-600">Объектов</div>
+                        </motion.div>
+                        <motion.div 
+                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="text-4xl font-bold mb-2 text-blue-600">1,200+</div>
+                            <div className="text-gray-600">Клиентов</div>
+                        </motion.div>
+                        <motion.div 
+                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="text-4xl font-bold mb-2 text-blue-600">500+</div>
+                            <div className="text-gray-600">Агентов</div>
+                        </motion.div>
+                        <motion.div 
+                            className="text-center bg-white p-6 rounded-2xl shadow-sm"
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="text-4xl font-bold mb-2 text-blue-600">98%</div>
+                            <div className="text-gray-600">Довольных клиентов</div>
+                        </motion.div>
                     </div>
 
                     {/* Преимущества */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
-                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Search className="w-6 h-6" />
+                        <motion.div 
+                            className="bg-white rounded-2xl p-8 shadow-sm"
+                            whileHover={{ y: -5 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Search className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-semibold mb-4">Умный поиск</h3>
-                            <p className="text-gray-300">
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Умный поиск</h3>
+                            <p className="text-gray-600">
                                 Используйте расширенные фильтры для поиска идеального варианта. Находите объекты по районам, цене, площади и другим параметрам.
                             </p>
-                        </div>
+                        </motion.div>
 
-                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
-                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Users className="w-6 h-6" />
+                        <motion.div 
+                            className="bg-white rounded-2xl p-8 shadow-sm"
+                            whileHover={{ y: -5 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Users className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-semibold mb-4">Проверенные агенты</h3>
-                            <p className="text-gray-300">
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Проверенные агенты</h3>
+                            <p className="text-gray-600">
                                 Работайте только с проверенными специалистами. Все агенты проходят тщательную проверку и имеют подтвержденный рейтинг.
                             </p>
-                        </div>
+                        </motion.div>
 
-                        <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-lg">
-                            <div className="bg-blue-500/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <CheckCircle className="w-6 h-6" />
+                        <motion.div 
+                            className="bg-white rounded-2xl p-8 shadow-sm"
+                            whileHover={{ y: -5 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <CheckCircle className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-semibold mb-4">Безопасные сделки</h3>
-                            <p className="text-gray-300">
-                                Гарантируем безопасность всех сделок. Предоставляем юридическую поддержку и проверку документов на всех этапах.
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Гарантия качества</h3>
+                            <p className="text-gray-600">
+                                Мы проверяем каждое объявление на достоверность информации и соответствие заявленным характеристикам.
                             </p>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </motion.section>
