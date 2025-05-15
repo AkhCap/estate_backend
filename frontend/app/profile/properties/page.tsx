@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import axios from "../../../lib/axios";
 import { formatPrice } from "../../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaEdit, FaTrash, FaEye, FaPlus, FaRegCalendarAlt } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaEdit, FaTrash, FaEye, FaPlus, FaRegCalendarAlt, FaArrowLeft } from "react-icons/fa";
 import PropertyCard from "@/components/PropertyCard";
 
 const BASE_URL = "http://localhost:8000";
@@ -23,10 +23,11 @@ interface Property {
   views_count: number;
   status: "active" | "inactive" | "pending";
   created_at: string;
-  deal_type: "sale" | "rent";
+  deal_type: "sale" | "rent" | "daily";
   property_type: string;
   floor: number;
   total_floors: number;
+  owner_id: number | null;
 }
 
 const container = {
@@ -86,6 +87,7 @@ export default function MyPropertiesPage() {
   const [error, setError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<number | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchProperties();
@@ -93,13 +95,38 @@ export default function MyPropertiesPage() {
 
   const fetchProperties = async () => {
     try {
-      const response = await axios.get("/users/me/properties");
-      setProperties(response.data);
+      const [propertiesResponse, favoritesResponse] = await Promise.all([
+        axios.get("/users/me/properties"),
+        axios.get("/favorites")
+      ]);
+      setProperties(propertiesResponse.data);
+      const favoriteIdsSet = new Set<number>(favoritesResponse.data.map((fav: any) => Number(fav.property.id)));
+      setFavoriteIds(favoriteIdsSet);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Ошибка при загрузке объявлений");
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, propertyId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      if (favoriteIds.has(propertyId)) {
+        await axios.delete(`/favorites/${propertyId}`);
+        setFavoriteIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(propertyId);
+          return newSet;
+        });
+      } else {
+        await axios.post('/favorites', { property_id: propertyId });
+        setFavoriteIds(prev => new Set([...prev, propertyId]));
+      }
+    } catch (err) {
+      console.error('Ошибка при изменении избранного:', err);
     }
   };
 
@@ -138,117 +165,69 @@ export default function MyPropertiesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Мои объявления</h1>
-        <Link href="/create-property">
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-            <FaPlus /> Добавить объявление
-          </button>
-        </Link>
-      </div>
+    <div className="fixed inset-0 top-16 bg-gradient-to-b from-gray-50 to-white overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <Link href="/profile">
+            <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
+              <FaArrowLeft className="w-4 h-4" />
+              <span>Вернуться в профиль</span>
+            </button>
+          </Link>
+        </div>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Мои объявления</h1>
+          <Link href="/create-property">
+            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+              <FaPlus /> Добавить объявление
+            </button>
+          </Link>
+        </div>
 
-      <div className="space-y-6">
-        {properties.map((property) => (
-          <motion.div
-            key={property.id}
-            variants={item}
-            className="group relative"
-          >
-            <Link href={`/properties/${property.id}`}>
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="flex flex-col md:flex-row h-[240px]">
-                  {/* Изображение */}
-                  <div className="relative md:w-72 h-full overflow-hidden bg-gray-100">
-                    <img
-                      src={property.images && property.images.length > 0 && property.images[0].image_url 
-                        ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
-                        : "/images/photo1.jpg"}
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/photo1.jpg';
-                        target.onerror = null;
-                      }}
-                    />
-                  </div>
-
-                  {/* Информация */}
-                  <div className="flex-1 p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-                            {property.title}
-                          </h3>
-                          <div className="flex items-center text-gray-600 mt-1">
-                            <FaMapMarkerAlt className="mr-2" />
-                            <p className="text-sm line-clamp-1">{property.address}</p>
-                          </div>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {formatPrice(property.price)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <FaBed className="w-4 h-4" />
-                          <span>{property.rooms} комнат</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FaRulerCombined className="w-4 h-4" />
-                          <span>Площадь: {property.area} м²</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center text-sm text-gray-500 mb-3">
-                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-                        <span>Создано: {formatDate(property.created_at)}</span>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            router.push(`/properties/edit/${property.id}`);
-                          }}
-                          className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1.5"
-                        >
-                          <FaEdit className="w-3 h-3" /> Редактировать
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDelete(property.id);
-                          }}
-                          className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
-                        >
-                          <FaTrash className="w-3 h-3" /> Удалить
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-6">
+          {properties.map((property) => (
+            <div key={property.id} className="flex items-start gap-4">
+              <div className="flex-grow max-w-2xl">
+                <PropertyCard
+                  property={{
+                    ...property,
+                    deal_type: (property.deal_type as 'sale' | 'rent' | 'daily') || 'sale',
+                    floor: property.floor ? String(property.floor) : undefined,
+                    owner_id: typeof property.owner_id === 'number' ? property.owner_id : 0,
+                  }}
+                  favorites={favoriteIds}
+                  currentUserId={null}
+                  toggleFavorite={(e) => toggleFavorite(e, property.id)}
+                />
               </div>
-            </Link>
-          </motion.div>
-        ))}
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={() => router.push(`/properties/edit/${property.id}`)}
+                  className="text-base bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
+                >
+                  <FaEdit className="w-4 h-4" /> Редактировать
+                </button>
+                <button 
+                  onClick={() => handleDelete(property.id)}
+                  className="text-base bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2"
+                >
+                  <FaTrash className="w-4 h-4" /> Удалить
+                </button>
+              </div>
+            </div>
+          ))}
 
-        {properties.length === 0 && (
-          <div className="text-center py-12 bg-gray-50 rounded-xl">
-            <p className="text-gray-600 mb-4">У вас пока нет объявлений</p>
-            <Link href="/create-property">
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                <FaPlus /> Создать первое объявление
-              </button>
-            </Link>
-          </div>
-        )}
+          {properties.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <p className="text-gray-600 mb-4">У вас пока нет объявлений</p>
+              <Link href="/create-property">
+                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                  <FaPlus /> Создать первое объявление
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Модальное окно подтверждения удаления */}

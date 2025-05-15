@@ -6,8 +6,9 @@ import Link from "next/link";
 import axios from "../../lib/axios";
 import { formatPrice } from "../../lib/utils";
 import { motion } from "framer-motion";
-import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck, FaPlus } from "react-icons/fa";
+import { FaBed, FaRulerCombined, FaMapMarkerAlt, FaHeart, FaRegCalendarAlt, FaCheck, FaPlus, FaSearch, FaBuilding, FaParking, FaBath, FaSortAmountDown, FaSortAmountUp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import PropertyCard from "@/components/PropertyCard";
 
 // Добавляем базовый URL для изображений
 const BASE_URL = "http://localhost:8000";
@@ -114,6 +115,9 @@ export default function PropertiesPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"price" | "date">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -210,167 +214,81 @@ export default function PropertiesPage() {
     );
   }
 
+  const filteredAndSortedProperties = properties
+    .filter(property =>
+      property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      property.address.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === "date") {
+        return sortOrder === "desc" ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() : new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else {
+        return sortOrder === "desc" ? b.price - a.price : a.price - b.price;
+      }
+    });
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Заголовок и фильтры */}
-        <div className="mb-12">
-          <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">Объявления</h1>
-            <Link href="/create-property">
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-                <FaPlus /> Добавить объявление
-              </button>
-            </Link>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Фильтры и поиск */}
+        <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-2xl shadow-sm mb-8">
+          <div className="flex-grow relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Поиск по названию или адресу..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <select className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="">Тип жилья</option>
-                <option value="apartment">Квартира</option>
-                <option value="house">Дом</option>
-              </select>
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-            <div className="relative">
-              <select className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="">Количество комнат</option>
-                <option value="1">1 комната</option>
-                <option value="2">2 комнаты</option>
-                <option value="3">3 комнаты</option>
-                <option value="4+">4+ комнаты</option>
-              </select>
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-            <div className="relative">
-              <input
-                type="number"
-                placeholder="Цена от"
-                className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="relative">
-              <input
-                type="number"
-                placeholder="Цена до"
-                className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div className="flex gap-4">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "price" | "date")}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="date">По дате</option>
+              <option value="price">По цене</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="desc">По убыванию</option>
+              <option value="asc">По возрастанию</option>
+            </select>
           </div>
         </div>
 
         {/* Список объявлений */}
-        <motion.div 
+        <motion.div
           variants={container}
           initial="hidden"
           animate="show"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
-          {properties.map((property) => (
-            <motion.div
-              key={property.id}
-              variants={item}
-              className="group"
-            >
-              <Link href={`/properties/${property.id}`}>
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
-                  {/* Изображение */}
-                  <div className="relative h-[200px]">
-                    <img
-                      src={getMainImageUrl(property)}
-                      alt={property.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/no-image.jpg';
-                      }}
-                    />
-                    {property.is_viewed && property.owner_id !== currentUserId && (
-                      <div className="absolute top-4 left-4 bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
-                        <FaCheck className="w-2.5 h-2.5" />
-                        Просмотрено
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => toggleFavorite(e, property.id)}
-                      className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                        favorites.has(property.id)
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                          : 'bg-white text-gray-400 hover:text-red-600 hover:bg-red-50'
-                      } shadow-lg`}
-                    >
-                      <FaHeart className={`w-4 h-4 ${favorites.has(property.id) ? 'fill-current' : ''}`} />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                      <p className="text-white text-xl font-bold">
-                        {formatPrice(property.price)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Информация */}
-                  <div className="p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
-                    <div className="flex items-center text-gray-600 mb-3">
-                      <FaMapMarkerAlt className="mr-1 w-3 h-3" />
-                      <p className="text-sm truncate">{property.address}</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-gray-600 mb-2">
-                      <div className="flex items-center gap-1">
-                        <FaBed className="w-3 h-3" />
-                        <span className="text-sm">
-                            {property.rooms}
-                            {typeof property.rooms === 'string' && property.rooms.trim() !== '' && property.rooms.trim().toLowerCase() !== 'студия' && ' комнат'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FaRulerCombined className="w-3 h-3" />
-                        <span className="text-sm">Площадь: {property.area} м²</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <FaRegCalendarAlt className="w-3 h-3 mr-1" />
-                      <span>Создано: {formatDate(property.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+          {filteredAndSortedProperties.length === 0 ? (
+            <div className="col-span-4 text-center py-12 bg-white rounded-2xl">
+              <p className="text-gray-600">По вашему запросу ничего не найдено</p>
+            </div>
+          ) : (
+            filteredAndSortedProperties.map((property) => (
+              <PropertyCard
+                key={property.id}
+                property={{
+                  ...property,
+                  deal_type: (property.deal_type as 'sale' | 'rent' | 'daily') || 'sale',
+                  floor: property.floor ? String(property.floor) : undefined,
+                }}
+                favorites={favorites}
+                currentUserId={currentUserId}
+                toggleFavorite={(e) => toggleFavorite(e, property.id)}
+              />
+            ))
+          )}
         </motion.div>
-
-        {/* Пагинация */}
-        <div className="mt-12 flex justify-center">
-          <nav className="flex items-center space-x-2">
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500 text-white">
-              1
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors">
-              2
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors">
-              3
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </nav>
-        </div>
       </div>
     </div>
   );

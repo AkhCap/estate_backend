@@ -44,7 +44,7 @@ export default function RootLayout({
               // exit="out" // Удаляем
               // variants={pageVariants} // Удаляем
               // transition={pageTransition} // Удаляем
-              className="pt-20"
+              className="pt-0"
             >
               {children}
             </main>

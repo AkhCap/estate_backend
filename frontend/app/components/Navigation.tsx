@@ -44,7 +44,7 @@ const Navigation = () => {
 
     return (
         <header className="sticky top-0 z-50">
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-md border-b border-gray-100" />
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm" />
             <nav className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Левая часть: Логотип */}
@@ -80,7 +80,7 @@ const Navigation = () => {
                             <>
                                 <Link
                                     href="/create-property"
-                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-all transform hover:scale-105"
                                 >
                                     <span className="flex items-center">
                                         <Plus className="w-4 h-4 mr-1.5" />
@@ -88,8 +88,12 @@ const Navigation = () => {
                                     </span>
                                 </Link>
                                 
-                                <Link href="/chat/new" className="relative p-2">
-                                    <MessageSquare className="w-6 h-6 text-gray-600 hover:text-gray-900 transition-colors" />
+                                <Link href="/chat/new" className="relative">
+                                    <button className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 transition-all duration-200">
+                                        <div className="relative w-6 h-6">
+                                            <MessageSquare className="w-full h-full text-gray-600" strokeWidth={1.5} />
+                                        </div>
+                                    </button>
                                     {unreadChatCount > 0 && (
                                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 text-white text-xs flex items-center justify-center rounded-full">
                                             {unreadChatCount}
@@ -145,7 +149,7 @@ const Navigation = () => {
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                                 >
                                     Регистрация
                                 </Link>
@@ -213,7 +217,7 @@ const Navigation = () => {
                                     <>
                                         <Link
                                             href="/create-property"
-                                            className="block w-full px-3 py-1.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                                            className="block w-full px-3 py-1.5 text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-all transform hover:scale-105"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             <span className="flex items-center justify-center">
@@ -248,7 +252,7 @@ const Navigation = () => {
                                         </Link>
                                         <Link
                                             href="/register"
-                                            className="block px-3 py-1.5 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                                            className="block px-3 py-1.5 text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
                                             Регистрация

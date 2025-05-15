@@ -40,7 +40,7 @@ export default function PopularDistricts() {
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <motion.h2 
-                    className="text-3xl font-bold text-gray-900 mb-8"
+                    className="text-3xl font-bold text-gray-900 mb-8 text-center"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -48,7 +48,7 @@ export default function PopularDistricts() {
                 >
                     Популярные районы
                 </motion.h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
                     {districts.map((district, index) => (
                         <motion.div
                             key={district.name}
@@ -56,9 +56,9 @@ export default function PopularDistricts() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
-                            className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+                            className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 cursor-pointer w-full"
                         >
-                            <div className="relative h-48">
+                            <div className="relative h-32">
                                 <Image
                                     src={district.image}
                                     alt={district.name}
@@ -67,12 +67,11 @@ export default function PopularDistricts() {
                                     className="object-cover"
                                 />
                             </div>
-                            <div className="p-4">
-                                <h3 className="text-xl font-semibold text-gray-900 mb-2">{district.name}</h3>
-                                <p className="text-gray-600 mb-3">{district.description}</p>
-                                <div className="flex items-center text-emerald-600">
+                            <div className="p-3 text-center">
+                                <h3 className="text-sm font-semibold text-gray-900 mb-1">{district.name}</h3>
+                                <div className="flex items-center justify-center text-emerald-600 text-xs">
                                     <span className="font-medium">{district.properties}</span>
-                                    <span className="ml-2 text-sm">объектов</span>
+                                    <span className="ml-1">объектов</span>
                                 </div>
                             </div>
                         </motion.div>

@@ -17,8 +17,10 @@ import {
   FaSortAmountDown,
   FaSortAmountUp,
   FaRegCalendarAlt,
-  FaCheck
+  FaCheck,
+  FaArrowLeft
 } from "react-icons/fa";
+import PropertyCard from "@/components/PropertyCard";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -44,6 +46,7 @@ interface Property {
   created_at: string;
   is_viewed: boolean;
   owner_id: number;
+  deal_type: string;
 }
 
 const container = {
@@ -114,7 +117,7 @@ export default function FavoritesPage() {
     fetchData();
   }, []);
 
-  const removeFavorite = async (propertyId: number, e: React.MouseEvent) => {
+  const toggleFavorite = (e: React.MouseEvent, propertyId: number) => {
     e.preventDefault();
     e.stopPropagation();
     setPropertyToDelete(propertyId);
@@ -195,132 +198,36 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Заголовок и статистика */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Избранные объявления
-        </h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-600">
-            {favorites.length} {favorites.length === 1 ? "объявление" : "объявлений"}
-          </span>
+    <div className="fixed inset-0 top-16 bg-gradient-to-b from-gray-50 to-white overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <Link href="/profile">
+            <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
+              <FaArrowLeft className="w-4 h-4" />
+              <span>Вернуться в профиль</span>
+            </button>
+          </Link>
+        </div>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Избранное</h1>
+        </div>
+
+        <div className="space-y-6">
+          {favorites.map((favorite) => (
+            <PropertyCard
+              key={favorite.id}
+              property={{
+                ...favorite,
+                deal_type: (favorite.deal_type as 'sale' | 'rent' | 'daily') || 'sale',
+                floor: favorite.floor ? String(favorite.floor) : undefined,
+              }}
+              favorites={new Set(favorites.map(p => p.id))}
+              currentUserId={currentUserId}
+              toggleFavorite={toggleFavorite}
+            />
+          ))}
         </div>
       </div>
-
-      {/* Фильтры и поиск */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-2xl shadow-sm">
-        <div className="flex-grow relative">
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Поиск по названию или адресу..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="flex gap-4">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "date" | "price")}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="date">По дате</option>
-            <option value="price">По цене</option>
-          </select>
-          <button
-            onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-            className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-          >
-            {sortOrder === "desc" ? <FaSortAmountDown /> : <FaSortAmountUp />}
-          </button>
-        </div>
-      </div>
-
-      {/* Список объявлений */}
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 gap-6"
-      >
-        {filteredAndSortedFavorites.length === 0 ? (
-          <div className="col-span-2 text-center py-12 bg-white rounded-2xl">
-            <p className="text-gray-600">По вашему запросу ничего не найдено</p>
-          </div>
-        ) : (
-          filteredAndSortedFavorites.map((property) => (
-            <motion.div
-              key={property.id}
-              variants={item}
-              className="group relative"
-            >
-              <Link href={`/properties/${property.id}`}>
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                  {/* Изображение */}
-                  <div className="relative h-[200px] w-full overflow-hidden bg-gray-100">
-                    <img
-                      src={property.images && property.images.length > 0 && property.images[0].image_url 
-                        ? `${BASE_URL}/uploads/properties/${property.images[0].image_url}`
-                        : "/images/placeholder.png"}
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/photo1.jpg';
-                        target.onerror = null;
-                      }}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                      <p className="text-white text-xl font-bold">
-                        {formatPrice(property.price)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Информация */}
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
-                      {property.title}
-                    </h3>
-                    <div className="flex items-center text-gray-600 mb-4">
-                      <FaMapMarkerAlt className="mr-2 flex-shrink-0" />
-                      <p className="text-sm line-clamp-1">{property.address}</p>
-                    </div>
-                    <div className="flex items-center gap-4 text-gray-600 mb-3">
-                      <div className="flex items-center gap-1">
-                        <FaBed className="w-4 h-4" />
-                        <span>{property.rooms} комнат</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FaRulerCombined className="w-4 h-4" />
-                        <span>Площадь: {property.area} м²</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaRegCalendarAlt className="w-4 h-4 mr-2" />
-                        <span>Создано: {formatDate(property.created_at)}</span>
-                      </div>
-
-                      <button
-                        onClick={(e) => removeFavorite(property.id, e)}
-                        className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl transition-colors duration-200"
-                      >
-                        <FaHeart className="mr-1" />
-                        Убрать
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))
-        )}
-      </motion.div>
 
       {/* Модальное окно подтверждения удаления */}
       {showDeleteModal && (
