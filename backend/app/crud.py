@@ -25,7 +25,6 @@ def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> 
         email=user.email,
         hashed_password=hashed_password,
         first_name=user.first_name,
-        last_name=user.last_name,
         phone=user.phone
     )
     db.add(db_user)
@@ -46,8 +45,6 @@ def update_user(db: Session, user_id: int, updated_data: schemas.UserUpdate) -> 
         user.email = updated_data.email
     if updated_data.first_name is not None:
         user.first_name = updated_data.first_name
-    if updated_data.last_name is not None:
-        user.last_name = updated_data.last_name
     if updated_data.phone is not None:
         user.phone = updated_data.phone
     if updated_data.avatar_url is not None:

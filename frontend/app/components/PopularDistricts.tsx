@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { FaHome } from 'react-icons/fa';
 
 const districts = [
     {
         name: 'Исмоили Сомони',
-        image: 'https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?q=80&w=2070',
+        image: '/illustrations/centr svyazi.png',
         properties: 120,
         description: 'Центральный район с развитой инфраструктурой'
     },
@@ -50,31 +51,37 @@ export default function PopularDistricts() {
                 </motion.h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
                     {districts.map((district, index) => (
-                        <motion.div
+                        <Link
                             key={district.name}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
-                            className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 cursor-pointer w-full"
+                            href={`/properties?district=${encodeURIComponent(district.name)}`}
+                            className="w-full"
                         >
-                            <div className="relative h-32">
-                                <Image
-                                    src={district.image}
-                                    alt={district.name}
-                                    fill
-                                    priority={index === 0}
-                                    className="object-cover"
-                                />
-                            </div>
-                            <div className="p-3 text-center">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-1">{district.name}</h3>
-                                <div className="flex items-center justify-center text-emerald-600 text-xs">
-                                    <span className="font-medium">{district.properties}</span>
-                                    <span className="ml-1">объектов</span>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: index * 0.1, ease: 'easeOut' }}
+                                className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full border border-gray-100"
+                            >
+                                <div className="relative h-48 bg-white flex items-center justify-center rounded-t-2xl overflow-hidden">
+                                    <Image
+                                        src={district.image}
+                                        alt={district.name}
+                                        fill
+                                        priority={index === 0}
+                                        className="object-contain"
+                                    />
                                 </div>
-                            </div>
-                        </motion.div>
+                                <div className="px-4 py-3 flex flex-col items-start gap-1">
+                                    <h3 className="text-base font-bold text-gray-900 mb-1 truncate w-full">{district.name}</h3>
+                                    <div className="flex items-center gap-1 text-blue-600 text-xs font-medium mb-1">
+                                        <FaHome className="w-4 h-4" />
+                                        <span>{district.properties} объектов</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 leading-snug line-clamp-2 min-h-[32px]">{district.description}</p>
+                                </div>
+                            </motion.div>
+                        </Link>
                     ))}
                 </div>
             </div>

@@ -22,7 +22,6 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="private")  # Значение по умолчанию
     first_name = Column(String, nullable=True)
-    last_name = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)

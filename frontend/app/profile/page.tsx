@@ -4,38 +4,40 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "../../lib/axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth, type User } from "@/app/context/AuthContext";
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaHistory, FaHeart, FaHome, FaTrash } from 'react-icons/fa';
+import { useAuth } from "@/app/context/AuthContext";
+import { FaUser, FaEnvelope, FaEdit, FaHistory, FaHeart, FaHome, FaPhone } from 'react-icons/fa';
 import Image from 'next/image';
 import DefaultAvatar from '../components/DefaultAvatar';
 
 interface UserProfile {
   id: number;
   email: string;
-  username: string;
   first_name: string;
-  last_name: string;
   phone: string;
   avatar_url: string | null;
-  role: string;
 }
+
+type Step = "profile" | "change-email";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [step, setStep] = useState<Step>("profile");
   const [formData, setFormData] = useState<Partial<UserProfile>>({
     first_name: "",
-    last_name: "",
-    email: "",
     phone: "",
+    email: "",
     avatar_url: null
   });
+  const [newEmail, setNewEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [countdown, setCountdown] = useState(0);
 
   const profileLinks = [
     { href: "/profile/history", label: "История просмотров", icon: FaHistory },
@@ -47,59 +49,18 @@ export default function ProfilePage() {
     fetchProfile();
   }, []);
 
-  const formatErrorMessage = (errorData: any): string => {
-    if (typeof errorData === 'string') {
-      return errorData;
-    }
-    
-    if (errorData.detail) {
-      return String(errorData.detail);
-    }
-    
-    if (Array.isArray(errorData)) {
-      return errorData
-        .map((item: any) => {
-          if (typeof item === 'object' && item.msg) {
-            return String(item.msg);
-          }
-          return String(item);
-        })
-        .filter(Boolean)
-        .join(', ');
-    }
-    
-    if (typeof errorData === 'object') {
-      const messages = Object.entries(errorData)
-        .map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return value
-              .map((item: any) => {
-                if (typeof item === 'object' && item.msg) {
-                  return String(item.msg);
-                }
-                return String(item);
-              })
-              .filter(Boolean)
-              .join(', ');
-          }
-          if (typeof value === 'object' && value !== null) {
-            const errorObj = value as { msg?: string };
-            if (errorObj.msg) {
-              return String(errorObj.msg);
-            }
-            return Object.values(value)
-              .map(v => String(v))
-              .filter(Boolean)
-              .join(', ');
-          }
-          return String(value);
-        })
-        .filter(Boolean)
-        .join(', ');
-      return messages || "Произошла ошибка при обработке запроса";
-    }
-    
-    return "Произошла ошибка при обработке запроса";
+  // Функция для запуска таймера
+  const startCountdown = () => {
+    setCountdown(60);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const fetchProfile = async () => {
@@ -107,10 +68,7 @@ export default function ProfilePage() {
       const response = await axios.get("/users/me");
       setFormData(response.data);
     } catch (err: any) {
-      const errorMessage = err.response?.data 
-        ? formatErrorMessage(err.response.data)
-        : "Ошибка при загрузке профиля";
-      
+      const errorMessage = err.response?.data?.detail || "Ошибка при загрузке профиля";
       setError(errorMessage);
       console.error('Ошибка загрузки профиля:', err);
     } finally {
@@ -143,8 +101,6 @@ export default function ProfilePage() {
       // Сначала обновляем основные данные профиля
       const profileData = {
         first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
         phone: formData.phone
       };
 
@@ -168,12 +124,46 @@ export default function ProfilePage() {
       setAvatar(null);
       setAvatarPreview(null); // Очищаем предпросмотр
     } catch (err: any) {
-      const errorMessage = err.response?.data 
-        ? formatErrorMessage(err.response.data)
-        : "Ошибка при обновлении профиля";
-      
+      const errorMessage = err.response?.data?.detail || "Ошибка при обновлении профиля";
       setError(errorMessage);
       console.error('Ошибка обновления профиля:', err);
+    }
+  };
+
+  const handleRequestEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    try {
+      await axios.post("/users/me/change-email/request", { new_email: newEmail });
+      setSuccess("Код подтверждения отправлен на новый email");
+      startCountdown();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Ошибка при отправке кода");
+    }
+  };
+
+  const handleVerifyEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await axios.post("/users/me/change-email/verify", {
+        old_email: formData.email,
+        new_email: newEmail,
+        code: verificationCode
+      });
+
+      // Обновляем токен в localStorage
+      localStorage.setItem("token", response.data.access_token);
+      
+      setSuccess("Email успешно изменен");
+      setStep("profile");
+      await fetchProfile();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Ошибка при подтверждении кода");
     }
   };
 
@@ -234,7 +224,6 @@ export default function ProfilePage() {
                   ) : (
                     <DefaultAvatar
                       firstName={formData.first_name}
-                      lastName={formData.last_name}
                       size={96}
                       className="rounded-full"
                     />
@@ -253,24 +242,6 @@ export default function ProfilePage() {
                       onChange={handleAvatarChange}
                     />
                   </label>
-                  {formData.avatar_url && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await axios.delete("/users/me/avatar");
-                          setFormData(prev => ({ ...prev, avatar_url: null }));
-                          setSuccess("Аватар успешно удален");
-                        } catch (err) {
-                          setError("Ошибка при удалении аватара");
-                          console.error('Ошибка удаления аватара:', err);
-                        }
-                      }}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                    >
-                      <FaTrash className="w-4 h-4 text-red-600" />
-                      <span className="text-sm text-red-600">Удалить</span>
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -285,75 +256,164 @@ export default function ProfilePage() {
             </button>
 
             {/* Форма профиля */}
-            <form onSubmit={handleSubmit} className="pt-16 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Имя
-                  </label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-                  />
+            <form onSubmit={handleSubmit} className="pt-16">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaUser className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="pl-10 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaPhone className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="pl-10 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-50"
+                        placeholder="+992 XX XXX XX XX"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaEnvelope className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="email"
+                        value={formData.email || ""}
+                        disabled
+                        className="pl-10 w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50"
+                      />
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => setStep("change-email")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                        >
+                          Изменить почту
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isEditing && (
+                    <div className="flex justify-end space-x-4 pt-4">
+                      <button
+                        type="submit"
+                        className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
+                      >
+                        Сохранить
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Фамилия
-                  </label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Телефон
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+
+                <div className="hidden md:flex items-center justify-center">
+                  <Image
+                    src="/illustrations/undraw_profile_d7qw.svg"
+                    alt="Profile Illustration"
+                    width={400}
+                    height={400}
+                    className="w-full h-auto"
                   />
                 </div>
               </div>
-
-              {isEditing && (
-                <div className="flex justify-end space-x-4 pt-4">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
-                  >
-                    Сохранить
-                  </button>
-                </div>
-              )}
             </form>
           </div>
         </motion.div>
+
+        {/* Форма смены email */}
+        <AnimatePresence>
+          {step === "change-email" && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="mt-8 bg-white rounded-3xl shadow-sm overflow-hidden"
+            >
+              <div className="px-6 py-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Смена email</h2>
+                <form onSubmit={handleRequestEmailChange} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Новый email
+                    </label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => setStep("profile")}
+                      className="px-6 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={countdown > 0}
+                      className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+                    >
+                      {countdown > 0 ? `Повторить через ${countdown}с` : "Получить код"}
+                    </button>
+                  </div>
+                </form>
+
+                {success && success.includes("отправлен") && (
+                  <form onSubmit={handleVerifyEmailChange} className="mt-6 space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Код подтверждения
+                      </label>
+                      <input
+                        type="text"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-medium hover:shadow-lg transition-all duration-200"
+                      >
+                        Подтвердить
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Быстрые действия */}
         <motion.div 

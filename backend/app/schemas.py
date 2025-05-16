@@ -21,13 +21,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     first_name: Optional[str] = None
-    last_name: Optional[str] = None
     phone: Optional[str] = None
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
-    last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
 
@@ -36,7 +34,6 @@ class UserOut(BaseModel):
     id: int
     email: str
     first_name: Optional[str] = None
-    last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
     role: str
@@ -51,7 +48,6 @@ class UserOut(BaseModel):
 class UserPublicOut(BaseModel):
     id: int
     first_name: Optional[str] = None
-    last_name: Optional[str] = None
     avatar_url: Optional[str] = None
     # Добавьте другие публичные поля, если нужно (например, рейтинг, дата регистрации)
     
@@ -61,7 +57,6 @@ class UserPublicOut(BaseModel):
 class PropertyOwnerOut(BaseModel):
     id: int
     first_name: Optional[str] = None
-    last_name: Optional[str] = None
     properties_count: int = 0
     created_at: datetime
     avatar_url: Optional[str] = None
